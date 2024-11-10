@@ -1,0 +1,23 @@
+_target_: diffusion.model.unclip.UnclipLatentRF2d
+ae:
+  _target_: diffusion.model.modules.ae.AutoencoderKL
+val_shape: [4, 32, 32]
+mapping:
+  _target_: k_diffusion.models.image_transformer_v2.MappingSpec
+  depth: 2
+  width: 1024
+  d_ff: ${mul:${.width},3}
+  dropout: 0.0
+time_cond_type: rf_t
+img_embedder:
+  _target_: diffusion.model.modules.clip.ClipImgEmbedder
+  clip_model: openai/clip-vit-large-patch14
+  with_projection: false
+d_img: 1024 # img embedder is ViT-L
+d_t: ${.mapping.width}
+c_dropout: 0.0
+unet:
+  _target_: diffusion.model.transformer.Transformer    
+    
+    
+ 
