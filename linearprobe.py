@@ -80,7 +80,7 @@ def train(classifier, train_dataloader, test_dataloader, args):
         for batch_idx, batch in enumerate(tqdm(train_dataloader)):
             imgs, targets = batch
             caption = [""] * args.batch_size
-            imgs.to(args.device), targets.to(args.device), caption.to(args.device)
+            imgs, targets = imgs.to(args.device), targets.to(args.device)
             output = classifier(x=imgs, txt=caption)
 
             loss = loss_fn(output, targets)
@@ -115,8 +115,8 @@ def test(classifier, dataloader, args, split="Test", epoch=None):
     with torch.no_grad():
         for batch in tqdm(dataloader, total=len(dataloader)):
             imgs, targets = batch
+            imgs, targets = imgs.to(args.device), targets.to(args.device)
             caption = [""] * args.batch_size
-            imgs.to(args.device), targets.to(args.device), caption.to(args.device)
             output = classifier(x=imgs, txt=caption)
 
             _, top1_preds = torch.max(output, dim=-1)
@@ -143,9 +143,9 @@ if __name__ == '__main__':
     model = init_model(cfg, args.ckpt_pth)
     feature_extractor = FeatureExtractor(model, layer_num=args.layer_num)
     classifier = LinearProbeClassifier(feature_extractor)
+    classifier.to(args.device)
     
     # TODO load dataset
     # train(classifier, train_dataloader, test_dataloader, args)
 
     
-
