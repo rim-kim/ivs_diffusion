@@ -17,9 +17,10 @@ class RF(nn.Module, ABC):
         self,
         unet: nn.Module,
         mapping,
-        train_timestep_sampling: Literal["logit_sigmoid", "uniform"] = "logit_sigmoid",
+        train_timestep_sampling: Literal["logit_sigmoid", "uniform", "fixed"] = "fixed",
         time_cond_type: Literal["sigma", "rf_t"] = "rf_t",
         cfg_scale: float = 1.0,
+        fixed_t: float = 0.5,
     ) -> None:
         super().__init__()
         self.unet = unet
@@ -33,6 +34,7 @@ class RF(nn.Module, ABC):
         self.mapping = tag_module(
             MappingNetwork(mapping.depth, mapping.width, mapping.d_ff, dropout=mapping.dropout), "mapping"
         )
+        self.fixed_t = fixed_t
 
     @abstractmethod
     def get_pos(self, x: Float[torch.Tensor, "B C *DIM"]) -> Float[torch.Tensor, "B *DIM c"]:
@@ -72,6 +74,8 @@ class RF(nn.Module, ABC):
             t = torch.sigmoid(torch.randn((B,), device=x.device))
         elif self.train_timestep_sampling == "uniform":
             t = torch.rand((B,), device=x.device)
+        elif self.train_timestep_sampling == "fixed":
+            t = torch.full((B,), self.fixed_t, device=x.device)
         else:
             raise ValueError(f'Unknown train timestep sampling method "{self.train_timestep_sampling}".')
         texp = t.view([B, *([1] * len(x.shape[1:]))])
