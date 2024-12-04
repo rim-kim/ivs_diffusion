@@ -4,8 +4,10 @@ from datetime import datetime
 from tqdm import tqdm
 from omegaconf import OmegaConf, DictConfig
 import hydra
+from huggingface_hub import get_token
 
 from diffusion.model.classifier import FeatureExtractor, LinearProbeClassifier
+from dataset.dataset_preprocessing import DatasetLoader
 
 import torch
 from torch import nn
@@ -18,6 +20,10 @@ wandb.login()
 
 def parse_args():
     parser = argparse.ArgumentParser()
+    parser.add_argument(
+        '--data_dir', type=str, required=True,
+        help='path of cached imagenet data'
+    )
     parser.add_argument(
         '--cfg_path', type=str, required=True,
         help='path of model config file (.yaml)'
@@ -38,13 +44,13 @@ def parse_args():
         '--lr', type=float, default=1e-3,
     )
     parser.add_argument(
-        '--epochs', type=int, default=100,
+        '--epochs', type=int, default=30,
     )
     parser.add_argument(
-        '--batch_size', type=int, default=256,
+        '--batch_size', type=int, default=100,
     )
     parser.add_argument(
-        '--eval_interval', type=int, default=10,
+        '--eval_interval', type=int, default=5,
     )
     parser.add_argument(
         '--output_dir', type=str, required=True,
@@ -68,8 +74,9 @@ def init_model(cfg: DictConfig, ckpt_pth: str):
     return model
 
 def train(classifier, train_dataloader, test_dataloader, args):
-    wandb.init(project='linear_probe', 
-               name=f'{args.model_name}_{datetime.now().strftime("%Y%m%d-%H%M%S")}')
+    run_name = f'{args.model_name}_{args.layer_num}'
+    os.makedirs(os.path.join(args.output_dir, run_name), exist_ok=True)
+    wandb.init(project='linear_probe', name=run_name)
     wandb.watch(classifier, log='all', log_freq=args.batch_size)
 
     loss_fn = nn.CrossEntropyLoss()
@@ -77,9 +84,9 @@ def train(classifier, train_dataloader, test_dataloader, args):
     classifier.train()
     batch_num = 0
     for i in range(args.epochs):
-        for batch_idx, batch in enumerate(tqdm(train_dataloader)):
+        for batch_idx, batch in enumerate(tqdm(train_dataloader, total=train_dataloader.nsamples)):
             imgs, targets = batch
-            caption = [""] * args.batch_size
+            caption = [""] * imgs.size(0)
             imgs, targets = imgs.to(args.device), targets.to(args.device)
             output = classifier(x=imgs, txt=caption)
 
@@ -88,16 +95,16 @@ def train(classifier, train_dataloader, test_dataloader, args):
             loss.backward()
             optimizer.step()
 
-            wandb.log({"Loss/train": np.mean(loss),
-                       "epoch": (batch_num+1) / len(train_dataloader),
+            wandb.log({"Loss/train": loss.item(),
+                       "epoch": int((batch_num+1) / train_dataloader.nsamples),
                        "batch_idx": batch_idx},)
             batch_num += 1
 
     if (i + 1) % args.eval_interval == 0:
         test(classifier, test_dataloader, args, "Val", i+1)
 
-    # save checkpoint every 50th epoch
-    if (i + 1) % 50 == 0:
+    # save checkpoint every 10th epoch
+    if (i + 1) % 10 == 0:
         save_file = os.path.join(args.output_dir, f"epoch_{i+1}.pth")
         save_dict ={
                     "classifier": classifier.classifier.state_dict(),
@@ -113,10 +120,10 @@ def test(classifier, dataloader, args, split="Test", epoch=None):
     total = 0
 
     with torch.no_grad():
-        for batch in tqdm(dataloader, total=len(dataloader)):
+        for _, batch in tqdm(dataloader):
             imgs, targets = batch
             imgs, targets = imgs.to(args.device), targets.to(args.device)
-            caption = [""] * args.batch_size
+            caption = [""] * imgs.size(0)
             output = classifier(x=imgs, txt=caption)
 
             _, top1_preds = torch.max(output, dim=-1)
@@ -133,6 +140,15 @@ def test(classifier, dataloader, args, split="Test", epoch=None):
                         "epoch": epoch,})
         print(f'{split} accuracy: {total_top1 / total}, top-5: {total_top5 / total}')
 
+def get_dataloader(args, split):
+    handler = DatasetLoader(
+        hf_token=get_token(),
+        cache_dir=args.data_dir,
+        preprocessed_data_dir="",
+        batch_size=args.batch_size
+    )
+    return handler.make_dataloader(split)
+
 
 if __name__ == '__main__':
     args = parse_args()
@@ -145,7 +161,8 @@ if __name__ == '__main__':
     classifier = LinearProbeClassifier(feature_extractor)
     classifier.to(args.device)
     
-    # TODO load dataset
-    # train(classifier, train_dataloader, test_dataloader, args)
+    train_dataloader = get_dataloader(args, "train")
+    test_dataloader = get_dataloader(args, "val")
+    train(classifier, train_dataloader, test_dataloader, args)
 
     
