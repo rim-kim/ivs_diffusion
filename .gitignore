@@ -166,3 +166,16 @@ outputs/
 outputs*/
 slurm*.out
 wandb/
+
+# k-diffusion repo
+k-diffusion/
+
+# vscode stuff
+.vscode
+
+# data
+data/
+
+# Allow only files starting with 'sample' in the notebooks directory
+notebooks/
+!notebooks/sample*
