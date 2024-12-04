@@ -17,16 +17,17 @@ class RF(nn.Module, ABC):
         self,
         unet: nn.Module,
         mapping,
-        train_timestep_sampling: Literal["logit_sigmoid", "uniform"] = "logit_sigmoid",
+        train_timestep_sampling: Literal["logit_sigmoid", "uniform", "fixed"] = "fixed",
         time_cond_type: Literal["sigma", "rf_t"] = "rf_t",
         cfg_scale: float = 1.0,
+        fixed_t: float = 0.75,
     ) -> None:
         super().__init__()
         self.unet = unet
         self.train_timestep_sampling = train_timestep_sampling
         self.mapping = mapping
         self.cfg_scale = cfg_scale
-
+        self.fixed_t = fixed_t
         self.time_emb = layers.FourierFeatures(1, mapping.width)
         self.time_in_proj = Linear(mapping.width, mapping.width, bias=False)
         self.time_cond_type = time_cond_type
@@ -72,6 +73,8 @@ class RF(nn.Module, ABC):
             t = torch.sigmoid(torch.randn((B,), device=x.device))
         elif self.train_timestep_sampling == "uniform":
             t = torch.rand((B,), device=x.device)
+        elif self.train_timestep_sampling == "fixed":
+            t = torch.full((B,), self.fixed_t, device=x.device)
         else:
             raise ValueError(f'Unknown train timestep sampling method "{self.train_timestep_sampling}".')
         texp = t.view([B, *([1] * len(x.shape[1:]))])
@@ -88,6 +91,7 @@ class RF(nn.Module, ABC):
         pos = self.get_pos(zt)
 
         vtheta = self.unet(zt, pos=pos, **cond_dict)
+        
         return ((z1 - x - vtheta) ** 2).mean(dim=list(range(1, len(x.shape))))
 
     @torch.no_grad()
