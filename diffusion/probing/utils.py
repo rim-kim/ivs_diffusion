@@ -1,5 +1,6 @@
 import argparse
-
+from typing import Literal
+import math 
 
 def parse_args():
     parser = argparse.ArgumentParser()
@@ -37,7 +38,7 @@ def parse_args():
         '--batch_size', type=int, default=32,
     )
     parser.add_argument(
-        '--eval_interval', type=int, default=10,
+        '--eval_interval', type=int, default=1,
     )
     parser.add_argument(
         '--output_dir', type=str, required=True,
@@ -50,3 +51,8 @@ def parse_args():
 
     args = parser.parse_args()
     return args
+
+def precompute_dataset_len(batch_size, split: Literal["train", "val"] = "train"):
+    total_samples = 1281167 if split == "train" else 50000
+    num_batches =  math.ceil(total_samples / batch_size)
+    return num_batches
