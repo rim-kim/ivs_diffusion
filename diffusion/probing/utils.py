@@ -1,6 +1,9 @@
 import argparse
 from typing import Literal
 import math 
+from torchvision import datasets
+from torchvision.transforms import Compose, Resize, ToTensor, Lambda
+from torch.utils.data import DataLoader, Subset
 
 def parse_args():
     parser = argparse.ArgumentParser()
@@ -56,3 +59,27 @@ def precompute_dataset_len(batch_size, split: Literal["train", "val"] = "train")
     total_samples = 1281167 if split == "train" else 50000
     num_batches =  math.ceil(total_samples / batch_size)
     return num_batches
+
+def get_toy_data(batch_size: int, samples: int | None=None):
+    """
+    Loads a toy dataset (CIFAR-10) and applies specified transformations.
+    """
+    if not samples:
+        samples = batch_size * 2
+    transformations = Compose([
+        Resize((256, 256)),
+        ToTensor(),
+        Lambda(lambda x: x * 2 - 1)
+    ])
+    toy_train_data = datasets.CIFAR10(
+        root="./data/toy_data", train=True, download=True, transform=transformations
+    )
+    toy_val_data = datasets.CIFAR10(
+        root="./data/toy_data", train=False, download=True, transform=transformations
+    )
+    train_data = Subset(toy_train_data, list(range(samples)))
+    val_data = Subset(toy_val_data, list(range(samples)))
+    train_loader = DataLoader(train_data, batch_size=batch_size, shuffle=True)
+    val_loader = DataLoader(val_data, batch_size=batch_size, shuffle=False)
+
+    return train_loader, val_loader
