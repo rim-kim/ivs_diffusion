@@ -27,6 +27,7 @@ def feature_extractor(model, model_input, layer_start, feat_output_path):
         hook_handle.remove()
 
     # Save the features dictionary
+    # TODO Make one save for each dict
     torch.save(dict(layer2features), feat_output_path)
 
     return layer2features
@@ -37,11 +38,16 @@ class LinearProbeClassifier(nn.Module):
         self,
         feature_dim: int = 1152,
         num_classes: int = 1000,
+        layer_idx: int = 14, # Layer index to extract features from
         **kwargs,
     ):
         super().__init__()
         self.classifier = nn.Linear(feature_dim, num_classes)
+        self.layer_idx = layer_idx
 
-    def forward(self, x: Float[torch.Tensor, "b ..."], **data_kwargs) -> Float[torch.Tensor, "b"]:
-        pooled_features = x.mean(dim=1)
+    def forward(self, x: defaultdict[int, Float[torch.Tensor, "b ..."]], **data_kwargs) -> Float[torch.Tensor, "b"]:
+        if self.layer_idx not in x:
+            raise KeyError(f"Layer index {self.layer_idx} not found in the provided features.")
+        layer_features = x[self.layer_idx]
+        pooled_features = layer_features.mean(dim=1)
         return self.classifier(pooled_features)
