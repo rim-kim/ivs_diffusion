@@ -11,3 +11,4 @@ wandb
 matplotlib
 decord
 webdataset==0.2.100 
+colorlog==6.9.0
