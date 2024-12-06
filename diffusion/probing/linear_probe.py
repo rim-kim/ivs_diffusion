@@ -9,6 +9,7 @@ from diffusion.probing.utils import parse_args, precompute_dataset_len, get_toy_
 from diffusion.probing.classifier import feature_extractor, LinearProbeClassifier
 from diffusion.dataset.dataset_preprocessing import DatasetLoader
 from huggingface_hub import login, get_token
+from configs.tokens.tokens import HF_TOKEN
 
 import torch
 from torch import nn
@@ -174,8 +175,8 @@ if __name__ == '__main__':
     args.device = "cuda"
 
     # Retrieve the HF credentials
-    HF_TOKEN = ""
     login(token=HF_TOKEN)
+    
     # Call the DataLoader handler and DataLoaders
     handler = DatasetLoader(
         hf_token=get_token(),
