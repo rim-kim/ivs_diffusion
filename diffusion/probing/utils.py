@@ -1,11 +1,16 @@
 import argparse
-from typing import Literal
+from typing import Literal, Tuple, Optional
 import math 
 from torchvision import datasets
 from torchvision.transforms import Compose, Resize, ToTensor, Lambda
 from torch.utils.data import DataLoader, Subset
 
-def parse_args():
+def parse_args() -> argparse.Namespace:
+    """
+    Parses command-line arguments for the script.
+
+    :return: Parsed arguments as a Namespace object.
+    """
     parser = argparse.ArgumentParser()
     parser.add_argument(
         '--cfg_path', type=str, required=True,
@@ -28,8 +33,8 @@ def parse_args():
         help='starting transformer layer for feature extraction (zero-based index, up to the last layer)'
     )
     parser.add_argument(
-    '--feat_output_path', type=str, default="data/features/layer2features.pt",
-    help='path where the internal representations will be stored'
+        '--feat_output_dir', type=str, default="data/features/",
+        help='dir where the internal representations will be stored'
     )   
     parser.add_argument(
         '--lr', type=float, default=1e-3,
@@ -38,10 +43,10 @@ def parse_args():
         '--epochs', type=int, default=30,
     )
     parser.add_argument(
-        '--batch_size', type=int, default=32,
+        '--batch_size', type=int, default=64,
     )
     parser.add_argument(
-        '--eval_interval', type=int, default=1,
+        '--eval_interval', type=int, default=10,
     )
     parser.add_argument(
         '--output_dir', type=str, required=True,
@@ -55,14 +60,25 @@ def parse_args():
     args = parser.parse_args()
     return args
 
-def precompute_dataset_len(batch_size, split: Literal["train", "val"] = "train"):
+def precompute_dataset_len(batch_size: int, split: Literal["train", "val"] = "train") -> int:
+    """
+    Calculates the number of batches for a dataset split.
+
+    :param batch_size: The size of each batch.
+    :param split: Dataset split, either "train" or "val". Defaults to "train".
+    :return: The number of batches.
+    """
     total_samples = 1281167 if split == "train" else 50000
     num_batches =  math.ceil(total_samples / batch_size)
     return num_batches
 
-def get_toy_data(batch_size: int, samples: int | None=None):
+def get_toy_data(batch_size: int, samples: Optional[int] = None) -> Tuple[DataLoader, DataLoader]:
     """
     Loads a toy dataset (CIFAR-10) and applies specified transformations.
+
+    :param batch_size: The size of each batch.
+    :param samples: Number of samples to load for training and validation. Defaults to twice the batch size.
+    :return: Data loaders for training and validation datasets.
     """
     if not samples:
         samples = batch_size * 2

@@ -2,9 +2,31 @@ import torch
 from torch import nn
 from jaxtyping import Float
 from collections import defaultdict
+from utils.logging import logger
+import os
+from typing import Literal, DefaultDict
 
+def extract_features(
+    model: nn.Module,
+    model_input: Float[torch.Tensor, "..."],
+    layer_start: int,
+    feat_output_dir: str,
+    batch_idx: int,
+    mode: Literal["train", "val", "test"] = "train",
+    save: bool = False,
+) -> DefaultDict[int, Float[torch.Tensor, "..."]]:
+    """
+    Extracts features from specified layers of the model's `unet.mid_level` module.
 
-def feature_extractor(model, model_input, layer_start, feat_output_path):
+    :param model: The model to extract features from.
+    :param model_input: Input tensor for the model.
+    :param layer_start: Starting layer index for feature extraction.
+    :param feat_output_dir: Directory to save extracted features (if save is True).
+    :param batch_idx: Batch index, used for naming saved feature files.
+    :param mode: Mode of operation, can be "train", "val", or "test". Defaults to "train".
+    :param save: Whether to save the extracted features to a file. Defaults to False.
+    :return: A dictionary mapping layer indices to feature tensors.
+    """
     layer2features = defaultdict(lambda: torch.empty(0))
     hooks = []
 
@@ -26,19 +48,30 @@ def feature_extractor(model, model_input, layer_start, feat_output_path):
     for hook_handle in hooks:
         hook_handle.remove()
 
-    # Save the features dictionary
-    # TODO Make one save for each dict
-    torch.save(dict(layer2features), feat_output_path)
+    # Save the features dictionary of each batch
+    if save:
+        logger.info(f"Saving features from layer {layer_start} to {len(model.unet.mid_level)} for batch nr. {batch_idx}.")
+        fname = f"{mode}_{batch_idx}_layer2features.pt"
+        save_path = os.path.join(feat_output_dir, fname)
+        torch.save(dict(layer2features), save_path)
 
     return layer2features
 
 
 class LinearProbeClassifier(nn.Module):
+    """
+    A linear classifier for probing features extracted from a specific layer.
+
+    :param feature_dim: The dimensionality of the input features.
+    :param num_classes: The number of output classes for classification. Defaults to 1000.
+    :param layer_idx: Layer index from which to extract features for classification.
+    :param kwargs: Additional keyword arguments.
+    """
     def __init__(
         self,
         feature_dim: int = 1152,
         num_classes: int = 1000,
-        layer_idx: int = 14, # Layer index to extract features from
+        layer_idx: int = 14,
         **kwargs,
     ):
         super().__init__()
@@ -46,6 +79,14 @@ class LinearProbeClassifier(nn.Module):
         self.layer_idx = layer_idx
 
     def forward(self, x: defaultdict[int, Float[torch.Tensor, "b ..."]], **data_kwargs) -> Float[torch.Tensor, "b"]:
+        """
+        Performs forward pass for classification using features from a specific layer.
+
+        :param x: Dictionary mapping layer indices to feature tensors.
+        :param data_kwargs: Additional keyword arguments.
+        :return: Predicted logits for each class.
+        :raises KeyError: If the specified layer index is not found in the input features.
+        """
         if self.layer_idx not in x:
             raise KeyError(f"Layer index {self.layer_idx} not found in the provided features.")
         layer_features = x[self.layer_idx]

@@ -44,8 +44,8 @@ def log_image(wandb, image, key, image_args={}):
 
 def setup_logger():
     """Sets up a logging system with both file and console handlers
-    at different log levels for detailed evaluation of LLMs."""
-    logger = logging.getLogger("llm_benchmarking")
+    at different log levels."""
+    logger = logging.getLogger("linear_probing")
 
     # Prevent configuring the logger multiple times
     if logger.hasHandlers():
@@ -54,7 +54,7 @@ def setup_logger():
     logger.setLevel(logging.DEBUG)
 
     # File handler for detailed debug logs
-    fh = logging.FileHandler("llm_evaluation.log")
+    fh = logging.FileHandler("linear_probing.log")
     fh.setLevel(logging.DEBUG)
     file_formatter = logging.Formatter("%(asctime)s - %(levelname)-8s - %(message)s")
     fh.setFormatter(file_formatter)
