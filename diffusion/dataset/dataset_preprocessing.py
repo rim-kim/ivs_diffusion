@@ -55,20 +55,19 @@ class DatasetLoader:
         Create a dataloader for the given dataset URL.
         Shuffle is enabled only if needed (e.g., for training).
         """
-        # Activate shuffling by default
-        shardshuffle=True
-        shuffle=1000
+        # Deactivate shuffling if not in training mode
+        if is_training:
+            shardshuffle=True
+            shuffle=1000
+        else:
+            shardshuffle=False
+            shuffle=0
 
         transform = self.preprocessing_transform()
 
         def make_sample(sample):
             return transform(sample["jpg"]), sample["cls"]
         
-        # Deactivate shuffling if not in training mode
-        if not is_training:
-            shardshuffle=False
-            shuffle=0
-
         # Load the dataset
         os.makedirs(self.cache_dir, exist_ok=True)
         dataset = wds.WebDataset(
@@ -90,7 +89,7 @@ class DatasetLoader:
         else:
             # For validation mode, no unbatching/rebatching or extra shuffle
             dataset = dataset.batched(64)
-            dataloader = wds.WebLoader(dataset, batch_size=None, num_workers=4, worker_init_fn=self.worker_init_fn)
+            dataloader = wds.WebLoader(dataset, batch_size=None)
 
         return dataloader
 
