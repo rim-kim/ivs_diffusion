@@ -174,7 +174,10 @@ k-diffusion/
 .vscode
 
 # data
-data/
+data/features
+data/preprocessed_data
+data/shards
+data/toy_data
 
 # Allow only files starting with 'sample' in the notebooks directory
 notebooks/

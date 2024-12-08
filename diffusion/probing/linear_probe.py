@@ -1,6 +1,6 @@
 import os
 import sys
-sys.path.append(os.path.abspath("/home/z004x5av/repos/ivs_diffusion/utils")) # TODO: find alternative
+sys.path.append(os.path.abspath("/home/z004x5av/repos/ivs_diffusion")) # TODO: find alternative
 from utils.logging import logger
 from tqdm import tqdm
 from omegaconf import DictConfig
@@ -79,11 +79,10 @@ def train(
                                     unit=" Batch",
                                     colour="blue",
                                     leave=False):
-            caption = [""] * imgs.size(0) # NOTE: Is this necessary?
             imgs, targets = imgs.to(config.device), targets.to(config.device)
             batch_num += 1
             # Extract features
-            features = extract_features(pretrained_model, imgs, config.layer_start, config.feat_output_dir, batch_num)
+            features = extract_features(pretrained_model, model_name, (imgs, targets), config.layer_start, config.feat_output_dir, batch_num)
             # Make predictions
             output = classifier(features)
             # Compute loss, gradients and update weights

@@ -1,9 +1,11 @@
 import argparse
-from typing import Literal, Tuple, Optional
+from typing import Literal, Tuple, Optional, List
 import math 
 from torchvision import datasets
 from torchvision.transforms import Compose, Resize, ToTensor, Lambda
 from torch.utils.data import DataLoader, Subset
+from data.imagenet_classes.imagenet_classes import classes
+import torch
 
 def parse_args() -> argparse.Namespace:
     """
@@ -100,3 +102,24 @@ def get_toy_data(batch_size: int, samples: Optional[int] = None) -> Tuple[DataLo
     val_loader = DataLoader(val_data, batch_size=batch_size, shuffle=False)
 
     return train_loader, val_loader
+
+def get_captions(targets: torch.Tensor) -> List[str]:
+    """
+    Generates captions based on target class indices.
+
+    :param targets: A tensor containing target class indices.
+    :return: A list of caption strings corresponding to the target classes.
+    """
+    class_strings = [preprocess_caption(classes[tgt]) for tgt in targets.tolist()]
+    return class_strings 
+
+def preprocess_caption(label: str) -> str:
+    """
+    Preprocesses a label to generate a descriptive caption.
+
+    :param label: The input label string.
+    :return: A caption string describing the label.
+    """
+    first_label = label.split(",")[0]
+    caption = f"a photo of a(n) {first_label}"
+    return caption

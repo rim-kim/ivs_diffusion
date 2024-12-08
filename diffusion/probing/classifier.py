@@ -4,11 +4,16 @@ from jaxtyping import Float
 from collections import defaultdict
 from utils.logging import logger
 import os
-from typing import Literal, DefaultDict
+from typing import Literal, DefaultDict, Tuple
+from diffusion.model.t2i import T2ILatentRF2d
+from diffusion.model.unclip import UnclipLatentRF2d
+from diffusion.probing.utils import get_captions
+
 
 def extract_features(
     model: nn.Module,
-    model_input: Float[torch.Tensor, "..."],
+    model_name: str,
+    model_input: Tuple[Float[torch.Tensor, "..."], Float[torch.Tensor, "..."]],
     layer_start: int,
     feat_output_dir: str,
     batch_idx: int,
@@ -19,6 +24,7 @@ def extract_features(
     Extracts features from specified layers of the model's `unet.mid_level` module.
 
     :param model: The model to extract features from.
+    :param model_name: The name of the model configuration.
     :param model_input: Input tensor for the model.
     :param layer_start: Starting layer index for feature extraction.
     :param feat_output_dir: Directory to save extracted features (if save is True).
@@ -27,6 +33,7 @@ def extract_features(
     :param save: Whether to save the extracted features to a file. Defaults to False.
     :return: A dictionary mapping layer indices to feature tensors.
     """
+    imgs, targets = model_input
     layer2features = defaultdict(lambda: torch.empty(0))
     hooks = []
 
@@ -41,8 +48,20 @@ def extract_features(
         hook_handle = model.unet.mid_level[layer_idx].register_forward_hook(hook(layer_idx))
         hooks.append(hook_handle)
 
+    # Provide correct input to pre-trained model
     with torch.no_grad():
-        _ = model(model_input)
+        if isinstance(model, T2ILatentRF2d):
+            if model_name == "t2i":
+                captions = get_captions(targets)
+            elif model_name == "t2i_uncond":
+                captions = [""] * imgs.size(0)
+            else:
+                raise ValueError(f"Unexpected model_name: {model_name}")
+            _ = model(x=imgs, caption=captions)
+        elif isinstance(model, UnclipLatentRF2d):
+            _ = model(imgs)
+        else:
+            raise TypeError(f"Unsupported model type: {type(model).__name__}")
 
     # Remove hooks after feature extraction
     for hook_handle in hooks:
