@@ -17,7 +17,7 @@ def parse_args() -> argparse.Namespace:
         help='path of model config file (.yaml)'
     )
     parser.add_argument(
-        '--ckpt_pth', type=str, required=True,
+        '--ckpt_path', type=str, required=True,
         help='path of model checkpoint'
     )
     parser.add_argument(
