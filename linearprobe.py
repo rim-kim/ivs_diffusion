@@ -4,7 +4,8 @@ from datetime import datetime
 from tqdm import tqdm
 from omegaconf import OmegaConf, DictConfig
 import hydra
-from huggingface_hub import get_token
+from huggingface_hub import get_token, login
+import json
 
 from diffusion.model.classifier import FeatureExtractor, LinearProbeClassifier
 from dataset.dataset_preprocessing import DatasetLoader
@@ -15,8 +16,18 @@ import numpy as np
 import wandb
 
 
-wandb.login()
+TOKEN_PTH = 'configs/token.json'
+IMAGENET_LABEL_PTH = 'dataset/imagenet-simple-labels.json'
 
+
+wandb.login()
+login(token=json.load(open(TOKEN_PTH))["token"])
+
+
+def generate_caption(label_idx):
+    labels = json.load(open(IMAGENET_LABEL_PTH))
+    caption = f"a photo of {labels[label_idx]}"
+    return caption
 
 def parse_args():
     parser = argparse.ArgumentParser()
@@ -60,7 +71,10 @@ def parse_args():
         '--model_name', type=str, default="unclip",
         help='name of model for lienar probing'
     )
-
+    parser.add_argument(
+        '--caption', type=bool, default=False,
+        help='caption generation for T2I model'
+    )
     args = parser.parse_args()
     return args
 
@@ -74,7 +88,7 @@ def init_model(cfg: DictConfig, ckpt_pth: str):
     return model
 
 def train(classifier, train_dataloader, test_dataloader, args):
-    run_name = f'{args.model_name}_{args.layer_num}'
+    run_name = f'{args.model_name}_{args.layer_num}_{args.timestep}'
     os.makedirs(os.path.join(args.output_dir, run_name), exist_ok=True)
     wandb.init(project='linear_probe', name=run_name)
     wandb.watch(classifier, log='all', log_freq=args.batch_size)
@@ -83,10 +97,12 @@ def train(classifier, train_dataloader, test_dataloader, args):
     optimizer = torch.optim.Adam(classifier.classifier.parameters(), lr=args.lr)
     classifier.train()
     batch_num = 0
-    for i in range(args.epochs):
-        for batch_idx, batch in enumerate(tqdm(train_dataloader, total=train_dataloader.nsamples)):
+    for i in tqdm(range(args.epochs), desc='Epochs'):
+        for batch_idx, batch in enumerate(tqdm(train_dataloader, desc=f"Epoch {i+1}")):
             imgs, targets = batch
             caption = [""] * imgs.size(0)
+            if args.caption:
+                caption = [generate_caption(targets[i]) for i in range(len(targets))]
             imgs, targets = imgs.to(args.device), targets.to(args.device)
             output = classifier(imgs, **{"txt": caption, "c_img": imgs})
 
@@ -96,7 +112,7 @@ def train(classifier, train_dataloader, test_dataloader, args):
             optimizer.step()
 
             wandb.log({"Loss/train": loss.item(),
-                       "epoch": int((batch_num+1) / train_dataloader.nsamples),
+                       "epoch": i,
                        "batch_idx": batch_idx},)
             batch_num += 1
 
@@ -124,6 +140,8 @@ def test(classifier, dataloader, args, split="Test", epoch=None):
             imgs, targets = batch
             imgs, targets = imgs.to(args.device), targets.to(args.device)
             caption = [""] * imgs.size(0)
+            if args.caption:
+                caption = [generate_caption(targets[i]) for i in range(len(targets))]
             output = classifier(imgs, **{"txt": caption, "c_img": imgs})
 
             _, top1_preds = torch.max(output, dim=-1)
@@ -152,6 +170,9 @@ def get_dataloader(args, split):
 
 if __name__ == '__main__':
     args = parse_args()
+
+    if not torch.cuda.is_available():
+        raise RuntimeError("CUDA is not available.")
     args.device = 'cuda'
 
     cfg = OmegaConf.load(args.cfg_path)
