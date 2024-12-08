@@ -47,7 +47,7 @@ def parse_args():
         '--epochs', type=int, default=30,
     )
     parser.add_argument(
-        '--batch_size', type=int, default=100,
+        '--batch_size', type=int, default=32,
     )
     parser.add_argument(
         '--eval_interval', type=int, default=5,
@@ -88,7 +88,7 @@ def train(classifier, train_dataloader, test_dataloader, args):
             imgs, targets = batch
             caption = [""] * imgs.size(0)
             imgs, targets = imgs.to(args.device), targets.to(args.device)
-            output = classifier(x=imgs, txt=caption)
+            output = classifier(imgs, **{"txt": caption, "c_img": imgs})
 
             loss = loss_fn(output, targets)
             optimizer.zero_grad()
@@ -124,7 +124,7 @@ def test(classifier, dataloader, args, split="Test", epoch=None):
             imgs, targets = batch
             imgs, targets = imgs.to(args.device), targets.to(args.device)
             caption = [""] * imgs.size(0)
-            output = classifier(x=imgs, txt=caption)
+            output = classifier(imgs, **{"txt": caption, "c_img": imgs})
 
             _, top1_preds = torch.max(output, dim=-1)
             total_top1 += (top1_preds == targets).sum().item()
@@ -155,9 +155,8 @@ if __name__ == '__main__':
     args.device = 'cuda'
 
     cfg = OmegaConf.load(args.cfg_path)
-    cfg.fixed_t = args.timestep
     model = init_model(cfg, args.ckpt_pth)
-    feature_extractor = FeatureExtractor(model, layer_num=args.layer_num)
+    feature_extractor = FeatureExtractor(model, layer_num=args.layer_num, fixed_t=args.timestep)
     classifier = LinearProbeClassifier(feature_extractor)
     classifier.to(args.device)
     

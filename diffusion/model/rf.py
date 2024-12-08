@@ -17,10 +17,9 @@ class RF(nn.Module, ABC):
         self,
         unet: nn.Module,
         mapping,
-        train_timestep_sampling: Literal["logit_sigmoid", "uniform", "fixed"] = "fixed",
+        train_timestep_sampling: Literal["logit_sigmoid", "uniform"] = "logit_sigmoid",
         time_cond_type: Literal["sigma", "rf_t"] = "rf_t",
         cfg_scale: float = 1.0,
-        fixed_t: float = 0.5,
     ) -> None:
         super().__init__()
         self.unet = unet
@@ -34,7 +33,6 @@ class RF(nn.Module, ABC):
         self.mapping = tag_module(
             MappingNetwork(mapping.depth, mapping.width, mapping.d_ff, dropout=mapping.dropout), "mapping"
         )
-        self.fixed_t = fixed_t
 
     @abstractmethod
     def get_pos(self, x: Float[torch.Tensor, "B C *DIM"]) -> Float[torch.Tensor, "B *DIM c"]:
@@ -67,6 +65,25 @@ class RF(nn.Module, ABC):
         time_emb = self.time_in_proj(self.time_emb(c_noise[..., None]))
         cond_time = self.mapping(time_emb)
         return {"cond_norm": cond_time}
+    
+    # Used for extracting features with fixed timesteps
+    def extract_features(self, x: Float[torch.Tensor, "b ..."], fixed_t: Float, **data_kwargs):
+        B = x.size(0)    
+        t = torch.full((B,), fixed_t, device=x.device)
+        texp = t.view([B, *([1] * len(x.shape[1:]))])
+
+        z1 = torch.randn_like(x)
+
+        zt = (1 - texp) * x + texp * z1
+
+        # make t, zt into same dtype as x
+        dtype = x.dtype
+        zt, t = zt.to(dtype), t.to(dtype)
+
+        cond_dict = self.get_conditioning(t, **data_kwargs)
+        pos = self.get_pos(zt)
+
+        self.unet(zt, pos=pos, **cond_dict)
 
     def forward(self, x: Float[torch.Tensor, "b ..."], **data_kwargs) -> Float[torch.Tensor, "b"]:
         B = x.size(0)
@@ -74,8 +91,6 @@ class RF(nn.Module, ABC):
             t = torch.sigmoid(torch.randn((B,), device=x.device))
         elif self.train_timestep_sampling == "uniform":
             t = torch.rand((B,), device=x.device)
-        elif self.train_timestep_sampling == "fixed":
-            t = torch.full((B,), self.fixed_t, device=x.device)
         else:
             raise ValueError(f'Unknown train timestep sampling method "{self.train_timestep_sampling}".')
         texp = t.view([B, *([1] * len(x.shape[1:]))])
@@ -137,6 +152,10 @@ class LatentRF2D(RF):
         super().__init__(**kwargs)
         self.ae = ae
         self.val_shape = val_shape
+
+    def extract_features(self, x: Float[torch.Tensor, "b ..."], fixed_t: Float, **data_kwargs):
+        latent = self.ae.encode(x)
+        super().extract_features(latent, fixed_t, **data_kwargs)
 
     def forward(self, x: Float[torch.Tensor, "b ..."], **data_kwargs) -> Float[torch.Tensor, "b"]:
         latent = self.ae.encode(x)
