@@ -81,7 +81,8 @@ def get_toy_data(batch_size: int, samples: Optional[int] = None) -> Tuple[DataLo
     :return: Data loaders for training and validation datasets.
     """
     if not samples:
-        samples = batch_size * 2
+        train_samples = batch_size * 4
+        val_samples = batch_size * 2
     transformations = Compose([
         Resize((256, 256)),
         ToTensor(),
@@ -93,8 +94,8 @@ def get_toy_data(batch_size: int, samples: Optional[int] = None) -> Tuple[DataLo
     toy_val_data = datasets.CIFAR10(
         root="./data/toy_data", train=False, download=True, transform=transformations
     )
-    train_data = Subset(toy_train_data, list(range(samples)))
-    val_data = Subset(toy_val_data, list(range(samples)))
+    train_data = Subset(toy_train_data, list(range(train_samples)))
+    val_data = Subset(toy_val_data, list(range(val_samples)))
     train_loader = DataLoader(train_data, batch_size=batch_size, shuffle=True)
     val_loader = DataLoader(val_data, batch_size=batch_size, shuffle=False)
 
