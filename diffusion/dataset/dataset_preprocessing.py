@@ -11,12 +11,15 @@ class DatasetLoader:
     Provides methods to create dataloaders for training and validation workflows.
     """
 
-    def __init__(self, hf_token, cache_dir, preprocessed_data_dir, batch_size, seed=42, verbose=False):
+    def __init__(self, hf_token, cache_dir, preprocessed_data_dir, batch_size, epochs, seed=42, verbose=False):
         self.hf_token = hf_token
         self.cache_dir = cache_dir
         self.preprocessed_data_dir = preprocessed_data_dir
         self.batch_size = batch_size
+        self.epochs = epochs
         self.seed = seed
+        self.train_shards = 1024
+        self.val_shards = 64
 
         # If verbose, prints shard info
         os.environ["GOPEN_VERBOSE"] = "1" if verbose else "0"
@@ -25,9 +28,17 @@ class DatasetLoader:
         torch.backends.cudnn.deterministic = True
         torch.backends.cudnn.benchmark = False
 
-        # Define URLs for datasets
-        self.trainset_url = f"pipe:curl -s -L https://huggingface.co/datasets/timm/imagenet-1k-wds/resolve/main/imagenet1k-train-{{0000..1023}}.tar -H 'Authorization:Bearer {self.hf_token}'"
-        self.valset_url = f"pipe:curl -s -L https://huggingface.co/datasets/timm/imagenet-1k-wds/resolve/main/imagenet1k-validation-{{00..63}}.tar -H 'Authorization:Bearer {self.hf_token}'"
+        # Define URLs for datasets with placeholders
+        self.trainset_url = (
+            "pipe:curl -s -L "
+            "https://huggingface.co/datasets/timm/imagenet-1k-wds/resolve/main/"
+            "imagenet1k-train-{{0000..{shards}}}.tar -H 'Authorization:Bearer {hf_token}'"
+        )
+        self.valset_url = (
+            "pipe:curl -s -L "
+            "https://huggingface.co/datasets/timm/imagenet-1k-wds/resolve/main/"
+            "imagenet1k-validation-{{00..{shards}}}.tar -H 'Authorization:Bearer {hf_token}'"
+        )
 
     @staticmethod
     def preprocessing_transform():
@@ -81,15 +92,15 @@ class DatasetLoader:
         ).shuffle(shuffle).decode("pil").map(make_sample)
 
         # For training, rebatch after unbatching for more thorough mixing
+        dataset = dataset.batched(self.batch_size)
         if is_training:
-            dataset = dataset.batched(64)
             dataloader = wds.WebLoader(dataset, batch_size=None, num_workers=4, worker_init_fn=self.worker_init_fn)
             dataloader = dataloader.unbatched().shuffle(1000).batched(self.batch_size)
-            dataloader = dataloader.with_epoch(1024 * 100 // 64)  # Fixed epoch length
+            dataloader = dataloader.with_epoch(self.train_shards * self.epochs // self.batch_size)  # Fixed epoch length
         else:
             # For validation mode, no unbatching/rebatching or extra shuffle
-            dataset = dataset.batched(64)
             dataloader = wds.WebLoader(dataset, batch_size=None)
+            dataloader = dataloader.with_epoch(self.val_shards * self.epochs // self.batch_size)
 
         return dataloader
 
@@ -98,9 +109,9 @@ class DatasetLoader:
         Make a dataloader for training or validation based on the split parameter.
         """
         if split == "train":
-            return self._call_dataloader(self.trainset_url)
+            return self._call_dataloader(self.trainset_url.format(shards=self.train_shards-1, hf_token=self.hf_token))
         elif split == "val":
-            return self._call_dataloader(self.valset_url, is_training=False)
+            return self._call_dataloader(self.valset_url.format(shards=self.val_shards-1, hf_token=self.hf_token), is_training=False)
         else:
             raise ValueError(f"Unknown split '{split}' specified. Use 'train' or 'val'.")
 
