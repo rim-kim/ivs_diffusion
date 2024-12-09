@@ -51,9 +51,9 @@ def train(
     :param model_data: A tuple containing the model name and its configuration dictionary.
     """
     model_name, model_config = model_data
-    run_name = f"{model_name}_{model_config['layer_num']}"
+    run_name = f"{model_name}_{model_config['layer_num']}_{model_config['timestep']}"
     os.makedirs(os.path.join(model_config['output_dir'], run_name), exist_ok=True)
-    wandb.init(project='linear_probe', name=run_name, config=model_config)
+    wandb.init(project="linear_probe", name=run_name, config=model_config)
     config = wandb.config
     wandb.define_metric(name="train_batch_loss", step_metric="train_step")
     wandb.define_metric(name="top1_accuracy", step_metric="val1_step")
@@ -82,7 +82,7 @@ def train(
             imgs, targets = imgs.to(config.device), targets.to(config.device)
             batch_num += 1
             # Extract features
-            features = extract_features(pretrained_model, model_name, (imgs, targets), config.layer_start, config.feat_output_dir, batch_num)
+            features = extract_features(pretrained_model, model_name, (imgs, targets), config.layer_start, config.timestep, config.feat_output_dir, batch_num)
             # Make predictions
             output = classifier(features)
             # Compute loss, gradients and update weights
@@ -103,7 +103,7 @@ def train(
             # Evaluate model at specified batch interval
             if (batch_num) % config.eval_interval == 0:
                 logger.info(f"Evaluating model at batch number {batch_num}...")
-                top1_accuracy, top5_accuracy = test(pretrained_model, classifier, test_dataloader, config, batch_num, "val")
+                top1_accuracy, top5_accuracy = test(pretrained_model, classifier, test_dataloader, config, batch_num, model_name, "val")
 
                 # Save if best performing model until now
                 weighted_accuracy = (top1_accuracy * 0.7) + (top5_accuracy * 0.3)
@@ -130,7 +130,8 @@ def test(
     classifier: LinearProbeClassifier, 
     dataloader: torch.utils.data.DataLoader, 
     config: Config, 
-    batch_num: int, 
+    batch_num: int,
+    model_name: str,
     split: Literal["val", "test"] = "test"
     ) -> tuple[float, float]:
     """
@@ -141,6 +142,7 @@ def test(
     :param dataloader: DataLoader for the evaluation dataset.
     :param config: The configuration object containing hyperparameters.
     :param batch_num: The current batch number during evaluation.
+    :param model_name: The name of the model configuration.
     :param split: Specifies whether evaluation is on "val" or "test" data. Defaults to "test".
     :return: Top-1 and Top-5 accuracy scores.
     """
@@ -158,9 +160,8 @@ def test(
                                                          colour="yellow"),
                                                          start=1):
             imgs, targets = imgs.to(config.device), targets.to(config.device)
-            caption = [""] * imgs.size(0) # NOTE: is caption necessary?
              # Extract features
-            features = extract_features(pretrained_model, imgs, config.layer_start, config.feat_output_dir, batch_idx, mode=split)
+            features = extract_features(pretrained_model, model_name, (imgs, targets), config.layer_start, config.timestep, config.feat_output_dir, batch_idx, mode=split)
             # Make predictions
             output = classifier(features)
             # Compute metrics

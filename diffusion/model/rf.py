@@ -17,17 +17,16 @@ class RF(nn.Module, ABC):
         self,
         unet: nn.Module,
         mapping,
-        train_timestep_sampling: Literal["logit_sigmoid", "uniform", "fixed"] = "fixed",
+        train_timestep_sampling: Literal["logit_sigmoid", "uniform"] = "logit_sigmoid",
         time_cond_type: Literal["sigma", "rf_t"] = "rf_t",
         cfg_scale: float = 1.0,
-        fixed_t: float = 0.75,
     ) -> None:
         super().__init__()
         self.unet = unet
         self.train_timestep_sampling = train_timestep_sampling
         self.mapping = mapping
         self.cfg_scale = cfg_scale
-        self.fixed_t = fixed_t
+
         self.time_emb = layers.FourierFeatures(1, mapping.width)
         self.time_in_proj = Linear(mapping.width, mapping.width, bias=False)
         self.time_cond_type = time_cond_type
@@ -73,8 +72,6 @@ class RF(nn.Module, ABC):
             t = torch.sigmoid(torch.randn((B,), device=x.device))
         elif self.train_timestep_sampling == "uniform":
             t = torch.rand((B,), device=x.device)
-        elif self.train_timestep_sampling == "fixed":
-            t = torch.full((B,), self.fixed_t, device=x.device)
         else:
             raise ValueError(f'Unknown train timestep sampling method "{self.train_timestep_sampling}".')
         texp = t.view([B, *([1] * len(x.shape[1:]))])
@@ -91,8 +88,30 @@ class RF(nn.Module, ABC):
         pos = self.get_pos(zt)
 
         vtheta = self.unet(zt, pos=pos, **cond_dict)
-        
         return ((z1 - x - vtheta) ** 2).mean(dim=list(range(1, len(x.shape))))
+    
+    def get_features(self, x: Float[torch.Tensor, "b ..."], t: int, **data_kwargs) -> None:
+        if t is None:
+            raise ValueError(f"No timestep value is provided.")
+        if not (0 <= t <= 1):
+            raise ValueError(f"Timestep value must be within the range 0 to 1 inclusive.")
+
+        # Move x to latent space
+        latent = self.ae.encode(x)
+        # Reshape for broadcasting
+        B = latent.size(0)
+        t = torch.full((B,), t, device=latent.device)
+        texp = t.view([B, *([1] * len(latent.shape[1:]))])
+        # Create noisy latent
+        z1 = torch.randn_like(latent)
+        zt = (1 - texp) * latent + texp * z1
+        # Make t, zt into same dtype as x
+        dtype = latent.dtype
+        zt, t = zt.to(dtype), t.to(dtype)
+        # Pass data to denoising U-Net
+        cond_dict = self.get_conditioning(t, **data_kwargs)
+        pos = self.get_pos(zt)
+        _ = self.unet(zt, pos=pos, **cond_dict)
 
     @torch.no_grad()
     def sample(
@@ -141,6 +160,9 @@ class LatentRF2D(RF):
     def forward(self, x: Float[torch.Tensor, "b ..."], **data_kwargs) -> Float[torch.Tensor, "b"]:
         latent = self.ae.encode(x)
         return super().forward(latent, **data_kwargs)
+    
+    def get_features(self, x: Float[torch.Tensor, "b ..."], t: float | int,  **data_kwargs) -> None:
+        return super().get_features(x=x, t=t, **data_kwargs)
 
     def get_pos(self, x: Float[torch.Tensor, "B C *DIM"]) -> Float[torch.Tensor, "B *DIM c"]:
         B, _, *DIMS = x.shape

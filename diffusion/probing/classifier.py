@@ -15,6 +15,7 @@ def extract_features(
     model_name: str,
     model_input: Tuple[Float[torch.Tensor, "..."], Float[torch.Tensor, "..."]],
     layer_start: int,
+    timestep: float | int,
     feat_output_dir: str,
     batch_idx: int,
     mode: Literal["train", "val", "test"] = "train",
@@ -27,6 +28,7 @@ def extract_features(
     :param model_name: The name of the model configuration.
     :param model_input: Input tensor for the model.
     :param layer_start: Starting layer index for feature extraction.
+    :param timestep: The amount of noise to diffuse.
     :param feat_output_dir: Directory to save extracted features (if save is True).
     :param batch_idx: Batch index, used for naming saved feature files.
     :param mode: Mode of operation, can be "train", "val", or "test". Defaults to "train".
@@ -57,9 +59,9 @@ def extract_features(
                 captions = [""] * imgs.size(0)
             else:
                 raise ValueError(f"Unexpected model_name: {model_name}")
-            _ = model(x=imgs, caption=captions)
+            model.get_features(imgs, timestep, captions)
         elif isinstance(model, UnclipLatentRF2d):
-            _ = model(imgs)
+            model.get_features(imgs, timestep)
         else:
             raise TypeError(f"Unsupported model type: {type(model).__name__}")
 
