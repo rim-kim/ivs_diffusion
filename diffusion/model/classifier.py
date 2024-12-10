@@ -22,8 +22,9 @@ class FeatureExtractor(nn.Module):
         def hook(module, input, output):
             features.append(output)
         
-        self.model.unet.mid_level[self.layer_num].register_forward_hook(hook)
+        hook_handle = self.model.unet.mid_level[self.layer_num].register_forward_hook(hook)
         _ = self.model.extract_features(x, self.fixed_t, **data_kwargs)
+        hook_handle.remove()
         return features[-1]
 
 
