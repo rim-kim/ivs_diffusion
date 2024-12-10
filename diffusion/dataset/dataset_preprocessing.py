@@ -96,12 +96,13 @@ class DatasetLoader:
         if is_training:
             dataloader = wds.WebLoader(dataset, batch_size=None, num_workers=4, worker_init_fn=self.worker_init_fn)
             dataloader = dataloader.unbatched().shuffle(1000).batched(self.batch_size)
-            dataloader = dataloader.with_epoch(self.train_shards * self.epochs // self.batch_size)  # Fixed epoch length
+            # dataloader = dataloader.with_epoch(self.train_shards * self.epochs // self.batch_size)
+            dataloader = dataloader.with_epoch(1281167 // self.batch_size)
         else:
             # For validation mode, no unbatching/rebatching or extra shuffle
             dataloader = wds.WebLoader(dataset, batch_size=None)
-            dataloader = dataloader.with_epoch(self.val_shards * self.epochs // self.batch_size)
-
+            # dataloader = dataloader.with_epoch(self.val_shards * self.epochs // self.batch_size)
+            dataloader = dataloader.with_epoch(50000 // self.batch_size)
         return dataloader
 
     def make_dataloader(self, split="train"):

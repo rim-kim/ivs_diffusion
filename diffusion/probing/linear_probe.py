@@ -73,16 +73,15 @@ def train(
     for epoch in range(1, config.epochs+1):
         batch_num = 0
         logger.info(f"Starting epoch {epoch}/{config.epochs}...")
-        for (imgs, targets) in tqdm(iterable=train_dataloader,
+        for batch_idx, (imgs, targets) in enumerate(tqdm(iterable=train_dataloader,
                                     total=train_dataloader.nsamples,
                                     desc="Batches in training",
                                     unit=" Batch",
                                     colour="blue",
-                                    leave=False):
+                                    leave=False)):
             imgs, targets = imgs.to(config.device), targets.to(config.device)
-            batch_num += 1
             # Extract features
-            features = extract_features(pretrained_model, model_name, (imgs, targets), config.layer_start, config.timestep, config.feat_output_dir, batch_num)
+            features = extract_features(pretrained_model, model_name, (imgs, targets), config.layer_start, config.timestep, config.feat_output_dir, batch_idx)
             # Make predictions
             output = classifier(features)
             # Compute loss, gradients and update weights
@@ -93,17 +92,17 @@ def train(
 
             # Log batch metrics to wandb
             wandb.log({
-                "train_step": batch_num,
+                "train_step": batch_idx,
                 "train_batch_loss": loss.item(),
             })
             wandb.log({
-                "epoch_step": batch_num,
+                "epoch_step": batch_idx,
                 "epoch": epoch})
 
             # Evaluate model at specified batch interval
-            if (batch_num) % config.eval_interval == 0:
-                logger.info(f"Evaluating model at batch number {batch_num}...")
-                top1_accuracy, top5_accuracy = test(pretrained_model, classifier, test_dataloader, config, batch_num, model_name, "val")
+            if (batch_idx + 1) % config.eval_interval == 0:
+                logger.info(f"Evaluating model at batch number {batch_idx + 1}...")
+                top1_accuracy, top5_accuracy = test(pretrained_model, classifier, test_dataloader, config, batch_idx, model_name, "val")
 
                 # Save if best performing model until now
                 weighted_accuracy = (top1_accuracy * 0.7) + (top5_accuracy * 0.3)
@@ -113,13 +112,13 @@ def train(
                         "classifier": classifier.classifier.state_dict(),
                         "optimizer": optimizer.state_dict(),
                         "epoch": epoch,
-                        "batch": batch_num,
+                        "batch": batch_idx,
                         "best_weighted_accuracy": best_weighted_accuracy,
                     }
                     torch.save(save_dict, best_model_path)
-                    logger.info(f"New best model saved at {best_model_path} with weighted accuracy {best_weighted_accuracy:.4f} at epoch {epoch} and batch idx {batch_num}.")
+                    logger.info(f"New best model saved at {best_model_path} with weighted accuracy {best_weighted_accuracy:.4f} at epoch {epoch} and batch idx {batch_idx+1}.")
 
-
+            batch_num += 1
         logger.info(f"Epoch {epoch} completed with {batch_num} batches.")
 
     logger.info("Training completed.")
@@ -130,10 +129,10 @@ def test(
     classifier: LinearProbeClassifier, 
     dataloader: torch.utils.data.DataLoader, 
     config: Config, 
-    batch_num: int,
+    batch_idx: int,
     model_name: str,
     split: Literal["val", "test"] = "test"
-    ) -> tuple[float, float]:
+    ) -> Tuple[float, float]:
     """
     Evaluates the classifier on the specified dataset split.
 
@@ -141,7 +140,7 @@ def test(
     :param classifier: The linear probe classifier to be evaluated.
     :param dataloader: DataLoader for the evaluation dataset.
     :param config: The configuration object containing hyperparameters.
-    :param batch_num: The current batch number during evaluation.
+    :param batch_idx: The current batch index during evaluation.
     :param model_name: The name of the model configuration.
     :param split: Specifies whether evaluation is on "val" or "test" data. Defaults to "test".
     :return: Top-1 and Top-5 accuracy scores.
@@ -153,12 +152,11 @@ def test(
     total = 0
 
     with torch.no_grad():
-        for batch_idx, (imgs, targets) in enumerate(tqdm(iterable=dataloader,
+        for (imgs, targets) in tqdm(iterable=dataloader,
                                                          total=dataloader.nsamples,
                                                          desc="Batches in validation", 
                                                          unit=" Batch",
-                                                         colour="yellow"),
-                                                         start=1):
+                                                         colour="yellow"):
             imgs, targets = imgs.to(config.device), targets.to(config.device)
              # Extract features
             features = extract_features(pretrained_model, model_name, (imgs, targets), config.layer_start, config.timestep, config.feat_output_dir, batch_idx, mode=split)
@@ -178,11 +176,11 @@ def test(
 
         if split == "val":
             wandb.log({
-                "val1_step": batch_num // config.eval_interval,
+                "val1_step": (batch_idx + 1) // config.eval_interval,
                 "top1_accuracy": top1_accuracy,
             })
             wandb.log({
-                "val2_step": batch_num // config.eval_interval,
+                "val2_step": (batch_idx + 1) // config.eval_interval,
                 "top5_accuracy": top5_accuracy,
             })
 

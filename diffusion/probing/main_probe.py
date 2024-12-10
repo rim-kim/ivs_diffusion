@@ -16,9 +16,8 @@ if __name__ == '__main__':
     # Iterate over the model configs and hyperparams
     for model_name, model_config in models.items():
 
-        # Define args and initialize the model  
+        # Initialize the pre-trained model  
         cfg = OmegaConf.load(model_config["cfg_path"])
-        # cfg.fixed_t = config.timestep # TODO
         pretrained_model = init_model(cfg, model_config["ckpt_path"])
         
         # Define device

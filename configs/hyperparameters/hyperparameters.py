@@ -1,11 +1,11 @@
-EPOCHS, BATCH_SIZE, EVAL_INTERVAL = 10, 64, 10
+EPOCHS, BATCH_SIZE, EVAL_INTERVAL, TIMESTEP, LAYER_NUM = 1, 64, 1000, 0.75, 14
 
 models = {
     "unclip": {
         "cfg_path": "/home/z004x5av/repos/ivs_diffusion/configs/model/rf_dit_unclip.yaml",
         "ckpt_path": "/home/z004x5av/repos/ivs_diffusion/model_checkpoints/unclip.pt",
-        "timestep": 0.75,
-        "layer_num": 14,
+        "timestep": TIMESTEP,
+        "layer_num": LAYER_NUM,
         "layer_start": 14,
         "feat_output_dir": "/home/z004x5av/repos/ivs_diffusion/data/features/",
         "lr": 0.001,
@@ -19,8 +19,8 @@ models = {
     "t2i": {
         "cfg_path": "/home/z004x5av/repos/ivs_diffusion/configs/model/rf_dit_t2i.yaml",
         "ckpt_path": "/home/z004x5av/repos/ivs_diffusion/model_checkpoints/t2i.pt",
-        "timestep": 0.75,
-        "layer_num": 14,
+        "timestep": TIMESTEP,
+        "layer_num": LAYER_NUM,
         "layer_start": 14,
         "feat_output_dir": "/home/z004x5av/repos/ivs_diffusion/data/features/",
         "lr": 0.001,
@@ -34,8 +34,8 @@ models = {
     "t2i_uncond": {
         "cfg_path": "/home/z004x5av/repos/ivs_diffusion/configs/model/rf_dit_t2i.yaml",
         "ckpt_path": "/home/z004x5av/repos/ivs_diffusion/model_checkpoints/t2i.pt",
-        "timestep": 0.75,
-        "layer_num": 14,
+        "timestep": TIMESTEP,
+        "layer_num": LAYER_NUM,
         "layer_start": 14,
         "feat_output_dir": "/home/z004x5av/repos/ivs_diffusion/data/features/",
         "lr": 0.001,
