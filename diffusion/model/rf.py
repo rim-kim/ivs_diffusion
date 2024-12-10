@@ -89,6 +89,29 @@ class RF(nn.Module, ABC):
 
         vtheta = self.unet(zt, pos=pos, **cond_dict)
         return ((z1 - x - vtheta) ** 2).mean(dim=list(range(1, len(x.shape))))
+    
+    def get_features(self, x: Float[torch.Tensor, "b ..."], t: int, **data_kwargs) -> None:
+        if t is None:
+            raise ValueError(f"No timestep value is provided.")
+        if not (0 <= t <= 1):
+            raise ValueError(f"Timestep value must be within the range 0 to 1 inclusive.")
+
+        # Move x to latent space
+        latent = self.ae.encode(x)
+        # Reshape for broadcasting
+        B = latent.size(0)
+        t = torch.full((B,), t, device=latent.device)
+        texp = t.view([B, *([1] * len(latent.shape[1:]))])
+        # Create noisy latent
+        z1 = torch.randn_like(latent)
+        zt = (1 - texp) * latent + texp * z1
+        # Make t, zt into same dtype as x
+        dtype = latent.dtype
+        zt, t = zt.to(dtype), t.to(dtype)
+        # Pass data to denoising U-Net
+        cond_dict = self.get_conditioning(t, **data_kwargs)
+        pos = self.get_pos(zt)
+        _ = self.unet(zt, pos=pos, **cond_dict)
 
     @torch.no_grad()
     def sample(
@@ -137,6 +160,9 @@ class LatentRF2D(RF):
     def forward(self, x: Float[torch.Tensor, "b ..."], **data_kwargs) -> Float[torch.Tensor, "b"]:
         latent = self.ae.encode(x)
         return super().forward(latent, **data_kwargs)
+    
+    def get_features(self, x: Float[torch.Tensor, "b ..."], t: float | int,  **data_kwargs) -> None:
+        return super().get_features(x=x, t=t, **data_kwargs)
 
     def get_pos(self, x: Float[torch.Tensor, "B C *DIM"]) -> Float[torch.Tensor, "B *DIM c"]:
         B, _, *DIMS = x.shape

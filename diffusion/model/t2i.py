@@ -77,9 +77,12 @@ class T2ILatentRF2d(LatentRF2D):
             prompt_embs = self.txt_embedder([""] * B)
 
         return {"cond_norm": cond_time, "x_cross": prompt_embs}
-
+    
     def forward(self, x: Float[torch.Tensor, "b ..."], caption: list[str], **data_kwargs) -> Float[torch.Tensor, "b"]:
         return super().forward(x=x, txt=caption, **data_kwargs)
+    
+    def get_features(self, x: Float[torch.Tensor, "b ..."], t: int, caption: list[str]):
+        return super().get_features(x=x, txt=caption, t=t)
 
     def sample(
         self,

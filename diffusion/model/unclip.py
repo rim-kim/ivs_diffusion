@@ -57,6 +57,9 @@ class UnclipLatentRF2d(LatentRF2D):
 
     def forward(self, x: Float[torch.Tensor, "b ..."], **data_kwargs) -> Float[torch.Tensor, "b"]:
         return super().forward(x=x, c_img=x, **data_kwargs)
+    
+    def get_features(self, x: Float[torch.Tensor, "b ..."], t: int):
+        return super().get_features(x=x, c_img=x, t=t)
 
     def sample(
         self,
