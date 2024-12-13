@@ -90,7 +90,7 @@ class RF(nn.Module, ABC):
         vtheta = self.unet(zt, pos=pos, **cond_dict)
         return ((z1 - x - vtheta) ** 2).mean(dim=list(range(1, len(x.shape))))
     
-    def get_features(self, x: Float[torch.Tensor, "b ..."], t: int, **data_kwargs) -> None:
+    def get_features(self, x: Float[torch.Tensor, "b ..."], t: Union[float, int], **data_kwargs) -> None:
         if t is None:
             raise ValueError(f"No timestep value is provided.")
         if not (0 <= t <= 1):
@@ -161,7 +161,7 @@ class LatentRF2D(RF):
         latent = self.ae.encode(x)
         return super().forward(latent, **data_kwargs)
     
-    def get_features(self, x: Float[torch.Tensor, "b ..."], t: float | int,  **data_kwargs) -> None:
+    def get_features(self, x: Float[torch.Tensor, "b ..."], t: Union[float, int],  **data_kwargs) -> None:
         return super().get_features(x=x, t=t, **data_kwargs)
 
     def get_pos(self, x: Float[torch.Tensor, "B C *DIM"]) -> Float[torch.Tensor, "B *DIM c"]:
