@@ -1,17 +1,18 @@
 import os
-import sys
-sys.path.append(os.path.abspath("/home/z004x5av/repos/ivs_diffusion")) # TODO: find alternative
-from utils.logging import logger
-from tqdm import tqdm
+from typing import Literal, Tuple, Union
+
 from omegaconf import DictConfig
 import hydra
-from diffusion.probing.classifier import extract_features, LinearProbeClassifier
-from diffusion.model.t2i import T2ILatentRF2d
-from diffusion.model.unclip import UnclipLatentRF2d
-from typing import Literal, Tuple
 import torch
+from tqdm import tqdm
 import wandb
 from wandb.sdk.wandb_config import Config
+
+from diffusion.model.t2i import T2ILatentRF2d
+from diffusion.model.unclip import UnclipLatentRF2d
+from probing.classifier import extract_features, LinearProbeClassifier
+from utils.logging import logger
+
 
 wandb.login()
 
@@ -35,7 +36,7 @@ def init_model(cfg: DictConfig, ckpt_path: str) -> torch.nn.Module:
 
 
 def train(
-    pretrained_model: T2ILatentRF2d | UnclipLatentRF2d,
+    pretrained_model: Union[T2ILatentRF2d, UnclipLatentRF2d],
     classifier: LinearProbeClassifier, 
     train_dataloader: torch.utils.data.DataLoader, 
     test_dataloader: torch.utils.data.DataLoader,
@@ -125,7 +126,7 @@ def train(
     wandb.finish()
 
 def test(
-    pretrained_model: T2ILatentRF2d | UnclipLatentRF2d,
+    pretrained_model: Union[T2ILatentRF2d, UnclipLatentRF2d],
     classifier: LinearProbeClassifier, 
     dataloader: torch.utils.data.DataLoader, 
     config: Config, 

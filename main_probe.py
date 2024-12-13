@@ -1,14 +1,17 @@
 import os
-from omegaconf import OmegaConf
-from diffusion.probing.linear_probe import init_model, train
-from utils.logging import logger
-import torch
+
 from huggingface_hub import login, get_token
-from diffusion.dataset.dataset_preprocessing import DatasetLoader
+from omegaconf import OmegaConf
+import torch
+
+from dataset.dataset_preprocessing import DatasetLoader
+from dataset.utils import get_toy_data
 from configs.tokens.tokens import HF_TOKEN
 from configs.hyperparameters.hyperparameters import models
-from diffusion.probing.classifier import LinearProbeClassifier
-from diffusion.probing.utils import get_toy_data
+from probing.classifier import LinearProbeClassifier
+from probing.linear_probe import init_model, train
+from utils.logging import logger
+
 
 DEBUG_MODE = False
 
@@ -31,8 +34,8 @@ if __name__ == '__main__':
         # Call the DataLoader handler and DataLoaders
         handler = DatasetLoader(
             hf_token=get_token(),
-            cache_dir="../../data/shards",
-            preprocessed_data_dir="../../data/preprocessed_data",
+            cache_dir="data/shards",
+            preprocessed_data_dir="data/preprocessed_data",
             batch_size=model_config["batch_size"],
             epochs=model_config["epochs"],
         )

@@ -1,13 +1,16 @@
+from collections import defaultdict
+import os
+from typing import Literal, DefaultDict, Tuple, Union
+
+from jaxtyping import Float
 import torch
 from torch import nn
-from jaxtyping import Float
-from collections import defaultdict
-from utils.logging import logger
-import os
-from typing import Literal, DefaultDict, Tuple
+
+from dataset.utils import get_captions
 from diffusion.model.t2i import T2ILatentRF2d
 from diffusion.model.unclip import UnclipLatentRF2d
-from diffusion.probing.utils import get_captions
+
+from utils.logging import logger
 
 
 def extract_features(
@@ -15,7 +18,7 @@ def extract_features(
     model_name: str,
     model_input: Tuple[Float[torch.Tensor, "..."], Float[torch.Tensor, "..."]],
     layer_start: int,
-    timestep: float | int,
+    timestep: Union[float, int],
     feat_output_dir: str,
     batch_idx: int,
     mode: Literal["train", "val", "test"] = "train",

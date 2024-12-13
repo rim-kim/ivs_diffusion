@@ -1,66 +1,13 @@
-import argparse
-from typing import Literal, Tuple, Optional, List
 import math 
+from typing import Literal, Tuple, Optional, List
+
+import torch
+from torch.utils.data import DataLoader, Subset
 from torchvision import datasets
 from torchvision.transforms import Compose, Resize, ToTensor, Lambda
-from torch.utils.data import DataLoader, Subset
-from data.imagenet_classes.imagenet_classes import classes
-import torch
 
-def parse_args() -> argparse.Namespace:
-    """
-    Parses command-line arguments for the script.
+from dataset.imagenet_classes import classes
 
-    :return: Parsed arguments as a Namespace object.
-    """
-    parser = argparse.ArgumentParser()
-    parser.add_argument(
-        '--cfg_path', type=str, required=True,
-        help='path of model config file (.yaml)'
-    )
-    parser.add_argument(
-        '--ckpt_path', type=str, required=True,
-        help='path of model checkpoint'
-    )
-    parser.add_argument(
-        '--timestep', type=float, required=True,
-        help='fixed timestep for linear probe (normalized)'
-    )
-    parser.add_argument(
-        '--layer_num', type=int, required=True,
-        help='transformer layer number for feature extraction'
-    )
-    parser.add_argument(
-        '--layer_start', type=int, default=14,
-        help='starting transformer layer for feature extraction (zero-based index, up to the last layer)'
-    )
-    parser.add_argument(
-        '--feat_output_dir', type=str, default="data/features/",
-        help='dir where the internal representations will be stored'
-    )   
-    parser.add_argument(
-        '--lr', type=float, default=1e-3,
-    )
-    parser.add_argument(
-        '--epochs', type=int, default=30,
-    )
-    parser.add_argument(
-        '--batch_size', type=int, default=64,
-    )
-    parser.add_argument(
-        '--eval_interval', type=int, default=10,
-    )
-    parser.add_argument(
-        '--output_dir', type=str, required=True,
-        help='path to save train checkpoints'
-    )
-    parser.add_argument(
-        '--model_name', type=str, default="unclip",
-        help='name of model for linear probing'
-    )
-
-    args = parser.parse_args()
-    return args
 
 def precompute_dataset_len(batch_size: int, split: Literal["train", "val"] = "train") -> int:
     """
