@@ -188,3 +188,6 @@ model_checkpoints/
 
 # Tokens
 tokens.py
+
+# Third Party Package repos
+third_party/
