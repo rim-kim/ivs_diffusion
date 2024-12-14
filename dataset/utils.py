@@ -1,12 +1,19 @@
-import math 
+import argparse
+import math
+import os
 from typing import Literal, Tuple, Optional, List
 
 import torch
 from torch.utils.data import DataLoader, Subset
 from torchvision import datasets
 from torchvision.transforms import Compose, Resize, ToTensor, Lambda
+from tqdm import tqdm
+from webdataset import TarWriter
 
 from dataset.imagenet_classes import classes
+from dataset.dataset_preprocessing import DatasetLoader
+from diffusion.model.modules.ae import AutoencoderKL
+from configs.tokens.tokens import HF_TOKEN
 
 
 def precompute_dataset_len(batch_size: int, split: Literal["train", "val"] = "train") -> int:
@@ -70,3 +77,65 @@ def preprocess_caption(label: str) -> str:
     first_label = label.split(",")[0]
     caption = f"a photo of a {first_label}"
     return caption
+
+def compute_latent_dataset(model, dataloader, output_path, samples_per_shard, device='cuda'):
+    """
+    Computes and collect latent from model.
+
+    :param model: The model to get latent from.
+    :param dataloder: The dataloader to iterate over.
+    :param output_path: The path of directory to store latent.
+    :param samples_per_shard: The number of samples per shard file.
+    :param device: The device of the model and data. 'cuda' as default.
+    """
+    os.makedirs(output_path, exist_ok=True)
+    sample_id, shard_id = 0, 0
+    shard_writer = None
+    
+    for _, (imgs, targets) in enumerate(tqdm(iterable=dataloader,total=dataloader.nsamples)):
+        imgs, targets = imgs.to(device), targets.to(device)
+        with torch.no_grad():
+            # convert to cpu and numpy to write .tar
+            latents = model.encode(imgs).cpu().numpy()
+            targets = targets.cpu().numpy()
+
+        for latent, label in zip(latents, targets):
+            # create new shard for every samples_per_shard
+            if sample_id % samples_per_shard == 0:
+                if shard_writer:
+                    shard_writer.close()
+                shard_writer = TarWriter(f"{output_path}/latent-{shard_id:06d}.tar")
+                shard_id += 1
+            # write sample into the shard
+            sample = {
+                '__key__': f"{sample_id:06d}",
+                'latent.pth': latent,
+                'cls.pth': label
+            }
+            shard_writer.write(sample)
+            sample_id += 1
+
+    if shard_writer:
+        shard_writer.close()
+
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--data_path", type=str)
+    parser.add_argument("--output_path", type=str)
+    parser.add_argument("--samples_per_shard", type=int, default=1000)
+    args = parser.parse_args()
+    handler = DatasetLoader(
+        hf_token=HF_TOKEN,
+        cache_dir=args.data_path,
+        preprocessed_data_dir="",
+        batch_size=64,
+        epochs=1,
+    )
+    # train_dataloader = handler.make_dataloader(split="train")
+    test_dataloader = handler.make_dataloader(split="val")
+    model = AutoencoderKL()
+    model.eval().to('cuda')
+    # compute_latent_dataset(model, train_dataloader, f"{args.output_path}/train", args.samples_per_shard)
+    compute_latent_dataset(model, test_dataloader, f"{args.output_path}/test", args.samples_per_shard)
+    
