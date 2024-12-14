@@ -1,4 +1,5 @@
 import argparse
+import io
 import math
 import os
 from typing import Literal, Tuple, Optional, List
@@ -95,8 +96,8 @@ def compute_latent_dataset(model, dataloader, output_path, samples_per_shard, de
     for _, (imgs, targets) in enumerate(tqdm(iterable=dataloader,total=dataloader.nsamples)):
         imgs, targets = imgs.to(device), targets.to(device)
         with torch.no_grad():
-            # convert to cpu and numpy to write .tar
-            latents = model.encode(imgs).cpu().numpy()
+            # convert to cpu to write .tar
+            latents = model.encode(imgs).cpu()
             targets = targets.cpu().numpy()
 
         for latent, label in zip(latents, targets):
@@ -106,13 +107,18 @@ def compute_latent_dataset(model, dataloader, output_path, samples_per_shard, de
                     shard_writer.close()
                 shard_writer = TarWriter(f"{output_path}/latent-{shard_id:06d}.tar")
                 shard_id += 1
-            # write sample into the shard
-            sample = {
+
+            # serialize latent in buffer
+            latent_buffer = io.BytesIO()
+            torch.save(latent)
+            latent_buffer.seek(0)
+
+            # write serialized latent into the shard
+            shard_writer.write({
                 '__key__': f"{sample_id:06d}",
-                'latent.pth': latent,
-                'cls.pth': label
-            }
-            shard_writer.write(sample)
+                'latent.pth': latent_buffer.read(),
+                'cls.pth': str(label)
+            })
             sample_id += 1
 
     if shard_writer:
