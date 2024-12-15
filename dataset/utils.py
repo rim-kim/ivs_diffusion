@@ -3,7 +3,9 @@ import io
 import math
 import os
 from typing import Literal, Tuple, Optional, List
+import zlib
 
+import numpy as np
 import torch
 from torch.utils.data import DataLoader, Subset
 from torchvision import datasets
@@ -108,15 +110,17 @@ def compute_latent_dataset(model, dataloader, output_path, samples_per_shard, de
                 shard_writer = TarWriter(f"{output_path}/latent-{shard_id:04d}.tar")
                 shard_id += 1
 
-            # serialize latent in buffer
+            # serialize numpy latent in buffer
             latent_buffer = io.BytesIO()
-            torch.save(latent, latent_buffer)
+            np.save(latent_buffer, latent.numpy())
             latent_buffer.seek(0)
+            # compress npy
+            compressed_latent = zlib.compress(latent_buffer.read())
 
             # write serialized latent into the shard
             shard_writer.write({
                 '__key__': f"{sample_id:07d}",
-                'latent.pth': latent_buffer.read(),
+                'latent.npy.zlib': compressed_latent,
                 'cls.txt': str(label)
             })
             sample_id += 1
@@ -133,7 +137,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
     handler = DatasetLoader(
         hf_token=HF_TOKEN,
-        cache_dir=args.data_path,
+        # cache_dir=args.data_path,
         preprocessed_data_dir="",
         batch_size=64,
         epochs=1,

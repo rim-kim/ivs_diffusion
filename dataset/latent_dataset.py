@@ -1,6 +1,7 @@
 import io
 import os
 import random
+import zlib
 
 import numpy as np
 import torch
@@ -57,7 +58,8 @@ class LatentDatasetLoader:
             dataset_url = f"{self.val_shard_path}/latent-{{0000..00{self.val_shards-1}}}.tar"
 
         def make_sample(sample):
-            latent = torch.load(io.BytesIO(sample['latent.pth']))
+            decompressed_latent = zlib.decompress(sample['latent.npy.zlib'])
+            latent = torch.tensor(np.load(io.BytesIO(decompressed_latent)))
             label = int(sample['cls.txt'])
             return latent, label
         
