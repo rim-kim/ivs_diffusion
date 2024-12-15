@@ -96,8 +96,7 @@ class RF(nn.Module, ABC):
         if not (0 <= t <= 1):
             raise ValueError(f"Timestep value must be within the range 0 to 1 inclusive.")
 
-        # Move x to latent space
-        latent = self.ae.encode(x)
+        latent = x
         # Reshape for broadcasting
         B = latent.size(0)
         t = torch.full((B,), t, device=latent.device)
@@ -108,9 +107,10 @@ class RF(nn.Module, ABC):
         # Make t, zt into same dtype as x
         dtype = latent.dtype
         zt, t = zt.to(dtype), t.to(dtype)
-        # Pass data to denoising U-Net
+        # Get conditional and positional information of data
         cond_dict = self.get_conditioning(t, **data_kwargs)
         pos = self.get_pos(zt)
+        # Pass data to denoising U-Net
         _ = self.unet(zt, pos=pos, **cond_dict)
 
     @torch.no_grad()

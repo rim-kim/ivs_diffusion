@@ -1,19 +1,15 @@
 import os
 
-from huggingface_hub import login, get_token
 from omegaconf import OmegaConf
 import torch
 
 from dataset.dataset_preprocessing import DatasetLoader
-from dataset.utils import get_toy_data
-from configs.tokens.tokens import HF_TOKEN
-from configs.hyperparameters.hyperparameters import models
+from dataset.latent_dataset import LatentDatasetLoader
+from configs.hyperparameters.hyperparameters import models, data_config
 from probing.classifier import LinearProbeClassifier
 from probing.linear_probe import init_model, train
 from utils.logging import logger
 
-
-DEBUG_MODE = False
 
 if __name__ == '__main__':
     # Iterate over the model configs and hyperparams
@@ -28,23 +24,15 @@ if __name__ == '__main__':
             logger.error("CUDA is not available. Exiting.")
             raise RuntimeError("CUDA is not available. Please ensure you have a compatible GPU and drivers installed.")
 
-        # Retrieve the HF credentials
-        login(token=HF_TOKEN)
-
         # Call the DataLoader handler and DataLoaders
-        handler = DatasetLoader(
-            hf_token=get_token(),
-            cache_dir="data/shards",
-            preprocessed_data_dir="data/preprocessed_data",
+        handler = LatentDatasetLoader(
+            train_shard_path=data_config["train_shard_path"],
+            val_shard_path=data_config["val_shard_path"],
             batch_size=model_config["batch_size"],
-            epochs=model_config["epochs"],
         )
-        # If True, use toy data to expedite script validation
-        if DEBUG_MODE:
-            train_dataloader, test_dataloader = get_toy_data(model_config["batch_size"])
-        else:
-            train_dataloader = handler.make_dataloader(split="train")
-            test_dataloader = handler.make_dataloader(split="val")
+        train_dataloader = handler.make_dataloader(split="train")
+        test_dataloader = handler.make_dataloader(split="val")
+        val_dataloader = handler.make_dataloader(split="val", is_reduced=True)
 
         # Instantiate the Linear Classifier
         classifier = LinearProbeClassifier(layer_idx=model_config["layer_num"])
@@ -52,7 +40,7 @@ if __name__ == '__main__':
 
         # Train the classifier
         try:
-            train(pretrained_model, classifier, train_dataloader, test_dataloader, (model_name, model_config))
+            train(pretrained_model, classifier, train_dataloader, val_dataloader, test_dataloader, (model_name, model_config))
         except Exception as e:
             logger.exception(f"An error occurred during training: {e}.")
             save_file = os.path.join(model_config["output_dir"], f"interrupted_{model_name}.pth")

@@ -76,6 +76,7 @@ def extract_features(
     if save:
         logger.info(f"Saving features from layer {layer_start} to {len(model.unet.mid_level)} for batch nr. {batch_idx}.")
         fname = f"{mode}_{batch_idx}_layer2features.pt"
+        os.makedirs(feat_output_dir, exist_ok=True)
         save_path = os.path.join(feat_output_dir, fname)
         torch.save(dict(layer2features), save_path)
 

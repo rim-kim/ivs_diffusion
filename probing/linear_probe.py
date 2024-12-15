@@ -4,6 +4,7 @@ from typing import Literal, Tuple, Union
 from omegaconf import DictConfig
 import hydra
 import torch
+from torch.nn.functional import cross_entropy
 from tqdm import tqdm
 import wandb
 from wandb.sdk.wandb_config import Config
@@ -38,7 +39,8 @@ def init_model(cfg: DictConfig, ckpt_path: str) -> torch.nn.Module:
 def train(
     pretrained_model: Union[T2ILatentRF2d, UnclipLatentRF2d],
     classifier: LinearProbeClassifier, 
-    train_dataloader: torch.utils.data.DataLoader, 
+    train_dataloader: torch.utils.data.DataLoader,
+    val_dataloader: torch.utils.data.DataLoader,
     test_dataloader: torch.utils.data.DataLoader,
     model_data: Tuple[str, dict],
     ) -> None:
@@ -48,17 +50,20 @@ def train(
     :param pretrained_model: The pre-trained model from which features are extracted.
     :param classifier: The linear probe classifier to be trained.
     :param train_dataloader: DataLoader for the training dataset.
-    :param test_dataloader: DataLoader for the validation dataset.
+    :param val_dataloader: DataLoader for the validation dataset.
+    :param test_dataloader: DataLoader for final full validation dataset.
     :param model_data: A tuple containing the model name and its configuration dictionary.
     """
     model_name, model_config = model_data
     run_name = f"{model_name}_{model_config['layer_num']}_{model_config['timestep']}"
+    os.makedirs(model_config["output_dir"], exist_ok=True)
     os.makedirs(os.path.join(model_config['output_dir'], run_name), exist_ok=True)
     wandb.init(project="linear_probe", name=run_name, config=model_config)
     config = wandb.config
     wandb.define_metric(name="train_batch_loss", step_metric="train_step")
     wandb.define_metric(name="top1_accuracy", step_metric="val1_step")
     wandb.define_metric(name="top5_accuracy", step_metric="val2_step")
+    wandb.define_metric(name="val_avg_loss", step_metric="val3_step")
     wandb.define_metric(name="epoch", step_metric="epoch_step")
     wandb.watch(classifier, log='all', log_freq=config.batch_size)
 
@@ -103,7 +108,7 @@ def train(
             # Evaluate model at specified batch interval
             if (batch_idx + 1) % config.eval_interval == 0:
                 logger.info(f"Evaluating model at batch number {batch_idx + 1}...")
-                top1_accuracy, top5_accuracy = test(pretrained_model, classifier, test_dataloader, config, batch_idx, model_name, "val")
+                top1_accuracy, top5_accuracy, _ = test(pretrained_model, classifier, val_dataloader, config, batch_idx, model_name, "val")
 
                 # Save if best performing model until now
                 weighted_accuracy = (top1_accuracy * 0.7) + (top5_accuracy * 0.3)
@@ -123,6 +128,15 @@ def train(
         logger.info(f"Epoch {epoch} completed with {batch_num} batches.")
 
     logger.info("Training completed.")
+
+    # Log final full validation
+    logger.info("Starting full validation...")
+    top1_accuracy, top5_accuracy, avg_loss = test(pretrained_model, classifier, test_dataloader, config, -1, model_name, "test")
+    wandb.log({
+        "full_top1_accuracy": top1_accuracy,
+        "full_top5_accuracy": top5_accuracy,
+        "full_avg_loss": avg_loss
+    })
     wandb.finish()
 
 def test(
@@ -144,12 +158,13 @@ def test(
     :param batch_idx: The current batch index during evaluation.
     :param model_name: The name of the model configuration.
     :param split: Specifies whether evaluation is on "val" or "test" data. Defaults to "test".
-    :return: Top-1 and Top-5 accuracy scores.
+    :return: Top-1 and Top-5 accuracy scores and average loss.
     """
     logger.info(f"Starting evaluation on {split} set...")
     classifier.eval()
     total_top1 = 0
     total_top5 = 0
+    total_loss = 0
     total = 0
 
     with torch.no_grad():
@@ -170,10 +185,13 @@ def test(
             for i in range(targets.size(0)):
                 if targets[i].item() in top5_preds[i].tolist():
                     total_top5 += 1
+            loss = cross_entropy(output, targets)
+            total_loss += loss.item() * targets.size(0)
             total += targets.size(0)
 
         top1_accuracy = total_top1 / total
         top5_accuracy = total_top5 / total
+        avg_loss = total_loss / total
 
         if split == "val":
             wandb.log({
@@ -184,6 +202,11 @@ def test(
                 "val2_step": (batch_idx + 1) // config.eval_interval,
                 "top5_accuracy": top5_accuracy,
             })
+            wandb.log({
+                "val3_step": (batch_idx + 1) // config.eval_interval,
+                "avg_loss": avg_loss,
+            })
 
         logger.info(f'{split}: top1 accuracy {top1_accuracy:.4f} and top5 accuracy {top5_accuracy:.4f}')
-        return top1_accuracy, top5_accuracy
+        logger.info(f'{split}: average loss {avg_loss:.4f}')
+        return top1_accuracy, top5_accuracy, avg_loss
