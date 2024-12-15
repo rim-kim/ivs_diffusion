@@ -1,9 +1,11 @@
-import webdataset as wds
-import torch
-import random
-import numpy as np
-from torchvision.transforms import Compose, Resize, ToTensor, Lambda
 import os
+import random
+
+import numpy as np
+import torch
+from torchvision.transforms import Compose, Resize, ToTensor, Lambda
+import webdataset as wds
+
 
 class DatasetLoader:
     """

@@ -174,10 +174,7 @@ k-diffusion/
 .vscode
 
 # data
-data/features
-data/preprocessed_data
-data/shards
-data/toy_data
+data/
 
 # Allow only files starting with 'sample' in the notebooks directory
 notebooks/
@@ -188,3 +185,9 @@ model_checkpoints/
 
 # Tokens
 tokens.py
+
+# Third Party Package repos
+third_party/
+
+# slurm logs
+slurm_logs/
