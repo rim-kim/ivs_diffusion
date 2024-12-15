@@ -27,9 +27,8 @@ class LatentDatasetLoader:
         torch.backends.cudnn.benchmark = False
 
         # Get the number of shard files from local path
-        # self.train_shards = len([f for f in os.listdir(train_shard_path) 
-        #                          if f.startswith("latent-") and f.endswith(".tar")])
-        self.train_shards=1000
+        self.train_shards = len([f for f in os.listdir(train_shard_path) 
+                                 if f.startswith("latent-") and f.endswith(".tar")])
         self.val_shards = len([f for f in os.listdir(val_shard_path) 
                                  if f.startswith("latent-") and f.endswith(".tar")])
         
