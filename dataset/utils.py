@@ -115,7 +115,7 @@ def compute_latent_dataset(model, dataloader, output_path, samples_per_shard, de
 
             # write serialized latent into the shard
             shard_writer.write({
-                '__key__': f"{sample_id:06d}",
+                '__key__': f"{sample_id:07d}",
                 'latent.pth': latent_buffer.read(),
                 'cls.txt': str(label)
             })
