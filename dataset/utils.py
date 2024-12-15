@@ -105,19 +105,19 @@ def compute_latent_dataset(model, dataloader, output_path, samples_per_shard, de
             if sample_id % samples_per_shard == 0:
                 if shard_writer:
                     shard_writer.close()
-                shard_writer = TarWriter(f"{output_path}/latent-{shard_id:06d}.tar")
+                shard_writer = TarWriter(f"{output_path}/latent-{shard_id:04d}.tar")
                 shard_id += 1
 
             # serialize latent in buffer
             latent_buffer = io.BytesIO()
-            torch.save(latent)
+            torch.save(latent, latent_buffer)
             latent_buffer.seek(0)
 
             # write serialized latent into the shard
             shard_writer.write({
                 '__key__': f"{sample_id:06d}",
                 'latent.pth': latent_buffer.read(),
-                'cls.pth': str(label)
+                'cls.txt': str(label)
             })
             sample_id += 1
 
@@ -143,5 +143,5 @@ if __name__ == "__main__":
     model = AutoencoderKL()
     model.eval().to('cuda')
     # compute_latent_dataset(model, train_dataloader, f"{args.output_path}/train", args.samples_per_shard)
-    compute_latent_dataset(model, test_dataloader, f"{args.output_path}/test", args.samples_per_shard)
+    compute_latent_dataset(model, test_dataloader, f"{args.output_path}/val", args.samples_per_shard)
     
