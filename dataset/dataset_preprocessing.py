@@ -13,13 +13,12 @@ class DatasetLoader:
     Provides methods to create dataloaders for training and validation workflows.
     """
 
-    def __init__(self, hf_token, cache_dir, preprocessed_data_dir, batch_size, epochs, seed=42, verbose=False):
+    def __init__(self, hf_token, cache_dir, batch_size, seed=42, verbose=False):
         self.hf_token = hf_token
         self.cache_dir = cache_dir
-        self.preprocessed_data_dir = preprocessed_data_dir
         self.batch_size = batch_size
-        self.epochs = epochs
         self.seed = seed
+        self.preprocessed_data_dir = "data/preprocessed_data"
         self.train_shards = 1024
         self.val_shards = 64
 
@@ -63,7 +62,7 @@ class DatasetLoader:
         random.seed(worker_seed)
         torch.manual_seed(worker_seed)
 
-    def _call_dataloader(self, dataset_url, is_training=True):
+    def _call_dataloader(self, dataset_url, is_training=True, is_reduced=False):
         """
         Create a dataloader for the given dataset URL.
         Shuffle is enabled only if needed (e.g., for training).
@@ -98,23 +97,27 @@ class DatasetLoader:
         if is_training:
             dataloader = wds.WebLoader(dataset, batch_size=None, num_workers=4, worker_init_fn=self.worker_init_fn)
             dataloader = dataloader.unbatched().shuffle(1000).batched(self.batch_size)
-            # dataloader = dataloader.with_epoch(self.train_shards * self.epochs // self.batch_size)
             dataloader = dataloader.with_epoch(1281167 // self.batch_size)
         else:
-            # For validation mode, no unbatching/rebatching or extra shuffle
-            dataloader = wds.WebLoader(dataset, batch_size=None)
-            # dataloader = dataloader.with_epoch(self.val_shards * self.epochs // self.batch_size)
-            dataloader = dataloader.with_epoch(50000 // self.batch_size)
+            # Reduce validation set to 10k
+            if is_reduced:
+                dataloader = wds.WebLoader(dataset.unbatched().shuffle(10000).slice(10000), batch_size=None)
+                dataloader = dataloader.batched(self.batch_size)
+                dataloader = dataloader.with_epoch(10000 // self.batch_size)
+            else:
+                # For validation mode, no unbatching/rebatching or extra shuffle
+                dataloader = wds.WebLoader(dataset, batch_size=None)
+                dataloader = dataloader.with_epoch(50000 // self.batch_size)
         return dataloader
 
-    def make_dataloader(self, split="train"):
+    def make_dataloader(self, split="train", is_reduced=False):
         """
         Make a dataloader for training or validation based on the split parameter.
         """
         if split == "train":
             return self._call_dataloader(self.trainset_url.format(shards=self.train_shards-1, hf_token=self.hf_token))
         elif split == "val":
-            return self._call_dataloader(self.valset_url.format(shards=self.val_shards-1, hf_token=self.hf_token), is_training=False)
+            return self._call_dataloader(self.valset_url.format(shards=self.val_shards-1, hf_token=self.hf_token), is_training=False, is_reduced=is_reduced)
         else:
             raise ValueError(f"Unknown split '{split}' specified. Use 'train' or 'val'.")
 

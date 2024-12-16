@@ -137,7 +137,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
     handler = DatasetLoader(
         hf_token=HF_TOKEN,
-        # cache_dir=args.data_path,
+        cache_dir=args.data_path,
         preprocessed_data_dir="",
         batch_size=64,
         epochs=1,
