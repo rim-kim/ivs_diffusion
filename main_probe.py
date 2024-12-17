@@ -1,15 +1,19 @@
 import os
 
+from huggingface_hub import login, get_token
 from omegaconf import OmegaConf
 import torch
 
 from dataset.dataset_preprocessing import DatasetLoader
 from dataset.latent_dataset import LatentDatasetLoader
-from configs.hyperparameters.hyperparameters import models, data_config
+from configs.tokens.tokens import HF_TOKEN
+from configs.hyperparameters.hyperparameters import models, latent_data_config
 from probing.classifier import LinearProbeClassifier
 from probing.linear_probe import init_model, train
 from utils.logging import logger
 
+
+login(token=HF_TOKEN)
 
 if __name__ == '__main__':
     # Iterate over the model configs and hyperparams
@@ -25,11 +29,18 @@ if __name__ == '__main__':
             raise RuntimeError("CUDA is not available. Please ensure you have a compatible GPU and drivers installed.")
 
         # Call the DataLoader handler and DataLoaders
-        handler = LatentDatasetLoader(
-            train_shard_path=data_config["train_shard_path"],
-            val_shard_path=data_config["val_shard_path"],
-            batch_size=model_config["batch_size"],
-        )
+        if model_name == "unclip":
+            handler = DatasetLoader(
+                hf_token=get_token(),
+                batch_size=model_config["batch_size"],
+                streaming=False,
+            )
+        else:
+            handler = LatentDatasetLoader(
+                train_shard_path=latent_data_config["train_shard_path"],
+                val_shard_path=latent_data_config["val_shard_path"],
+                batch_size=model_config["batch_size"],
+            )
         train_dataloader = handler.make_dataloader(split="train")
         test_dataloader = handler.make_dataloader(split="val")
         val_dataloader = handler.make_dataloader(split="val", is_reduced=True)

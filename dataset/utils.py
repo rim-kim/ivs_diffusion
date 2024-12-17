@@ -13,6 +13,7 @@ from torchvision.transforms import Compose, Resize, ToTensor, Lambda
 from tqdm import tqdm
 from webdataset import TarWriter
 
+from utils.logging import logger
 from dataset.imagenet_classes import classes
 from dataset.dataset_preprocessing import DatasetLoader
 from diffusion.model.modules.ae import AutoencoderKL
@@ -91,61 +92,80 @@ def compute_latent_dataset(model, dataloader, output_path, samples_per_shard, de
     :param samples_per_shard: The number of samples per shard file.
     :param device: The device of the model and data. 'cuda' as default.
     """
+    logger.info(f"Starting latent computation. Output path: '{output_path}', Samples per shard: {samples_per_shard}.")
     os.makedirs(output_path, exist_ok=True)
     sample_id, shard_id = 0, 0
     shard_writer = None
+    shard_sample_count = 0
     
-    for _, (imgs, targets) in enumerate(tqdm(iterable=dataloader,total=dataloader.nsamples)):
-        imgs, targets = imgs.to(device), targets.to(device)
-        with torch.no_grad():
-            # convert to cpu to write .tar
-            latents = model.encode(imgs).cpu()
-            targets = targets.cpu().numpy()
+    try:
+        for imgs, targets in tqdm(iterable=dataloader, total=dataloader.nsamples):
+            logger.debug("Processing a new batch of images...")
+            imgs, targets = imgs.to(device), targets.to(device)
+            with torch.no_grad():
+                # move to cpu to write .tar
+                latents = model.encode(imgs).cpu()
+                targets = targets.cpu().numpy()
 
-        for latent, label in zip(latents, targets):
-            # create new shard for every samples_per_shard
-            if sample_id % samples_per_shard == 0:
-                if shard_writer:
-                    shard_writer.close()
-                shard_writer = TarWriter(f"{output_path}/latent-{shard_id:04d}.tar")
-                shard_id += 1
+            for latent, label in tqdm(iterable=zip(latents, targets), total=len(latents), leave=None):
+                # create new shard for every samples_per_shard
+                if sample_id % samples_per_shard == 0:
+                    if shard_writer:
+                        shard_writer.close()
+                        logger.info(f"Closed shard {shard_id - 1} with {shard_sample_count} samples.")
+                    shard_writer = TarWriter(f"{output_path}/latent-{shard_id:04d}.tar")
+                    logger.info(f"Started new shard {shard_id}.")
+                    shard_id += 1
+                    shard_sample_count = 0
 
-            # serialize numpy latent in buffer
-            latent_buffer = io.BytesIO()
-            np.save(latent_buffer, latent.numpy())
-            latent_buffer.seek(0)
-            # compress npy
-            compressed_latent = zlib.compress(latent_buffer.read())
+                # serialize numpy latent in buffer
+                latent_buffer = io.BytesIO()
+                np.save(latent_buffer, latent.numpy())
+                latent_buffer.seek(0)
+                # compress npy
+                compressed_latent = zlib.compress(latent_buffer.read())
 
-            # write serialized latent into the shard
-            shard_writer.write({
-                '__key__': f"{sample_id:07d}",
-                'latent.npy.zlib': compressed_latent,
-                'cls.txt': str(label)
-            })
-            sample_id += 1
-
-    if shard_writer:
-        shard_writer.close()
+                # write serialized latent into the shard
+                shard_writer.write({
+                    '__key__': f"{sample_id:07d}",
+                    'latent.npy.zlib': compressed_latent,
+                    'cls.txt': str(label)
+                })
+                logger.debug(f"Sample {sample_id} written to shard {shard_id - 1}.")
+                sample_id += 1
+                shard_sample_count += 1
+    except Exception as e:
+        logger.error(f"An error occurred during latent computation: {e}")
+        raise
+    finally:
+        if shard_writer:
+            shard_writer.close()
+            logger.info(f"Closed final shard {shard_id - 1} with {shard_sample_count} samples.")
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--data_path", type=str)
-    parser.add_argument("--output_path", type=str)
+    parser.add_argument("--output_path", type=str, default="data/imagenet_latent")
     parser.add_argument("--samples_per_shard", type=int, default=1000)
+    parser.add_argument("--dataset", type=str, choices=["train", "val", "both"], default="both",
+                        help="Choose the dataset to process: 'train', 'val', or 'both'.")
     args = parser.parse_args()
+    
     handler = DatasetLoader(
         hf_token=HF_TOKEN,
-        # cache_dir=args.data_path,
-        preprocessed_data_dir="",
         batch_size=64,
-        epochs=1,
+        streaming=False,
     )
-    # train_dataloader = handler.make_dataloader(split="train")
-    test_dataloader = handler.make_dataloader(split="val")
     model = AutoencoderKL()
     model.eval().to('cuda')
-    # compute_latent_dataset(model, train_dataloader, f"{args.output_path}/train", args.samples_per_shard)
-    compute_latent_dataset(model, test_dataloader, f"{args.output_path}/val", args.samples_per_shard)
     
+    # Process based on the selected dataset
+    if args.dataset in ["train", "both"]:
+        train_dataloader = handler.make_dataloader(split="train")
+        logger.info("Computing latents on training dataset...")
+        compute_latent_dataset(model, train_dataloader, f"{args.output_path}/train", args.samples_per_shard)
+    
+    if args.dataset in ["val", "both"]:
+        test_dataloader = handler.make_dataloader(split="val")
+        logger.info("Computing latents on validation dataset...")
+        compute_latent_dataset(model, test_dataloader, f"{args.output_path}/val", args.samples_per_shard)

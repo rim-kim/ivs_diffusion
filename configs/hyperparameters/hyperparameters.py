@@ -1,6 +1,6 @@
-EPOCHS, BATCH_SIZE, EVAL_INTERVAL, TIMESTEP, LAYER_NUM = 1, 64, 1000, 0.75, 14
+EPOCHS, BATCH_SIZE, EVAL_INTERVAL, TIMESTEP, LAYER_NUM = 1, 32, 1000, 0.75, 14
 ROOT_DIR = "/home/z004x5av/repos/ivs_diffusion"
-data_config = {
+latent_data_config = {
     "train_shard_path": f"{ROOT_DIR}/data/imagenet_latent/train",
     "val_shard_path": f"{ROOT_DIR}/data/imagenet_latent/val",
 }
