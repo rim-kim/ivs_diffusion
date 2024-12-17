@@ -138,9 +138,7 @@ if __name__ == "__main__":
     handler = DatasetLoader(
         hf_token=HF_TOKEN,
         cache_dir=args.data_path,
-        preprocessed_data_dir="",
         batch_size=64,
-        epochs=1,
     )
     # train_dataloader = handler.make_dataloader(split="train")
     test_dataloader = handler.make_dataloader(split="val")
