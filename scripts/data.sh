@@ -13,5 +13,4 @@ source ~/anaconda3/etc/profile.d/conda.sh
 conda activate ivs
 
 python -m dataset.utils \
-    --data_path "/home/k/kimje/IVS/ivs_diffusion/data/imagenet" \
     --output_path "/home/k/kimje/IVS/ivs_diffusion/data/imagenet_latent"

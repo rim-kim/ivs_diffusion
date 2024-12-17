@@ -7,7 +7,7 @@ import torch
 from dataset.dataset_preprocessing import DatasetLoader
 from dataset.latent_dataset import LatentDatasetLoader
 from configs.tokens.tokens import HF_TOKEN
-from configs.hyperparameters.hyperparameters import models, data_config, latent_data_config
+from configs.hyperparameters.hyperparameters import models, latent_data_config
 from probing.classifier import LinearProbeClassifier
 from probing.linear_probe import init_model, train
 from utils.logging import logger
@@ -32,8 +32,8 @@ if __name__ == '__main__':
         if model_name == "unclip":
             handler = DatasetLoader(
                 hf_token=get_token(),
-                cache_dir=data_config["cache_dir"],
                 batch_size=model_config["batch_size"],
+                streaming=False,
             )
         else:
             handler = LatentDatasetLoader(

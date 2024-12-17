@@ -13,11 +13,12 @@ class DatasetLoader:
     Provides methods to create dataloaders for training and validation workflows.
     """
 
-    def __init__(self, hf_token, cache_dir, batch_size, seed=42, verbose=False):
+    def __init__(self, hf_token, batch_size, streaming=False, seed=42, verbose=False):
         self.hf_token = hf_token
-        self.cache_dir = cache_dir
         self.batch_size = batch_size
         self.seed = seed
+        # Static class params
+        self.cache_dir = None if streaming else "data/imagenet"
         self.preprocessed_data_dir = "data/preprocessed_data"
         self.train_shards = 1024
         self.val_shards = 64
@@ -81,7 +82,8 @@ class DatasetLoader:
             return transform(sample["jpg"]), sample["cls"]
         
         # Load the dataset
-        os.makedirs(self.cache_dir, exist_ok=True)
+        if self.cache_dir is not None:
+            os.makedirs(self.cache_dir, exist_ok=True)
         dataset = wds.WebDataset(
             dataset_url, 
             resampled=True,

@@ -131,14 +131,13 @@ def compute_latent_dataset(model, dataloader, output_path, samples_per_shard, de
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--data_path", type=str)
-    parser.add_argument("--output_path", type=str)
+    parser.add_argument("--output_path", type=str, default="data/imagenet_latent")
     parser.add_argument("--samples_per_shard", type=int, default=1000)
     args = parser.parse_args()
     handler = DatasetLoader(
         hf_token=HF_TOKEN,
-        cache_dir=args.data_path,
         batch_size=64,
+        streaming=False,
     )
     # train_dataloader = handler.make_dataloader(split="train")
     test_dataloader = handler.make_dataloader(split="val")
