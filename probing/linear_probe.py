@@ -17,19 +17,20 @@ from utils.logging import logger
 
 wandb.login()
 
-def init_model(cfg: DictConfig, ckpt_path: str) -> torch.nn.Module:
+def init_model(cfg: DictConfig, ckpt_path: str, device: str) -> torch.nn.Module:
     """
     Initializes the pre-trained model from a given configuration and checkpoint file.
 
     :param cfg: The configuration object containing the pre-trained model setup details.
     :param ckpt_path: Path to the pre-trained model checkpoint file.
+    :param device: The device on which the model will be initialized and run (e.g., "cuda").
     :return: The initialized pre-trained model with the checkpoint loaded.
     """
     logger.info("Initializing the pre-trained model...")
     pretrained_model = hydra.utils.instantiate(cfg)
-    pretrained_model = pretrained_model.cuda()
+    pretrained_model = pretrained_model.to(device)
     pretrained_model.load_state_dict(
-        {k: v for k, v in torch.load(ckpt_path, map_location='cuda').items() if not 'ae' in k},
+        {k: v for k, v in torch.load(ckpt_path, map_location=device).items() if not 'ae' in k},
         strict=False)
     pretrained_model.eval()
     logger.info(f"Model {pretrained_model.__class__.__name__} initialized and checkpoint loaded successfully.")
@@ -43,6 +44,7 @@ def train(
     val_dataloader: torch.utils.data.DataLoader,
     test_dataloader: torch.utils.data.DataLoader,
     model_data: Tuple[str, dict],
+    device: str,
     ) -> None:
     """
     Trains the linear probe classifier using extracted features from the pre-trained model.
@@ -53,12 +55,14 @@ def train(
     :param val_dataloader: DataLoader for the validation dataset.
     :param test_dataloader: DataLoader for final full validation dataset.
     :param model_data: A tuple containing the model name and its configuration dictionary.
+    :param device: The device on which computations will be performed (e.g., "cuda").
     """
     model_name, model_config = model_data
     run_name = f"{model_name}_{model_config['layer_num']}_{model_config['timestep']}"
     os.makedirs(model_config["output_dir"], exist_ok=True)
     os.makedirs(os.path.join(model_config['output_dir'], run_name), exist_ok=True)
     wandb.init(project="linear_probe", name=run_name, config=model_config)
+    wandb.config["device"] = device
     config = wandb.config
     wandb.define_metric(name="train_batch_loss", step_metric="train_step")
     wandb.define_metric(name="top1_accuracy", step_metric="val1_step")

@@ -18,7 +18,7 @@ from dataset.imagenet_classes import classes
 from dataset.dataset_preprocessing import DatasetLoader
 from diffusion.model.modules.ae import AutoencoderKL
 from configs.tokens.tokens import HF_TOKEN
-
+from configs.hyperparameters.hyperparameters import DEVICE
 
 def precompute_dataset_len(batch_size: int, split: Literal["train", "val"] = "train") -> int:
     """
@@ -82,7 +82,7 @@ def preprocess_caption(label: str) -> str:
     caption = f"a photo of a {first_label}"
     return caption
 
-def compute_latent_dataset(model, dataloader, output_path, samples_per_shard, device='cuda'):
+def compute_latent_dataset(model, dataloader, output_path, samples_per_shard, device=DEVICE):
     """
     Computes and collect latent from model.
 
@@ -157,7 +157,7 @@ if __name__ == "__main__":
         streaming=False,
     )
     model = AutoencoderKL()
-    model.eval().to('cuda')
+    model.eval().to(DEVICE)
     
     # Process based on the selected dataset
     if args.dataset in ["train", "both"]:
