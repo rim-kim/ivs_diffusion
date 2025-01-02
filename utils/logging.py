@@ -2,10 +2,9 @@ import numpy as np
 from torchvision.utils import make_grid
 import logging
 from colorlog import ColoredFormatter
+from configs.path_configs.path_configs import LOG_FILE_PATH
 
 from einops import rearrange
-import os
-from datetime import datetime
 
 # theoretically we do not need this function as wandb.Image directly calls make_grid under the hood, however with normalization!!!
 def image_batch_to_grid_image(images, nrow=None, padding=2):
@@ -55,11 +54,7 @@ def setup_logger():
     logger.setLevel(logging.DEBUG)
 
     # File handler for detailed debug logs
-    os.makedirs("logs", exist_ok=True)
-    log_dir_path = os.path.join("logs", datetime.now().strftime("%y%m%d-%H%M%S"))
-    os.makedirs(log_dir_path)
-    log_file_path = os.path.join(log_dir_path, "linear_probing.log")
-    fh = logging.FileHandler(log_file_path)
+    fh = logging.FileHandler(LOG_FILE_PATH)
     fh.setLevel(logging.DEBUG)
     file_formatter = logging.Formatter("%(asctime)s - %(levelname)-8s - %(message)s")
     fh.setFormatter(file_formatter)

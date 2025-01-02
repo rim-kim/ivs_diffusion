@@ -1,13 +1,12 @@
-import os
-
 from huggingface_hub import login, get_token
 from omegaconf import OmegaConf
 import torch
 
 from dataset.dataset_preprocessing import DatasetLoader
 from dataset.latent_dataset import LatentDatasetLoader
+from configs.path_configs.path_configs import TRAIN_LATENT_DIR, VAL_LATENT_DIR, MODEL_CKPT_PROBING_DIR
 from configs.tokens.tokens import HF_TOKEN
-from configs.hyperparameters.hyperparameters import models, latent_data_config, DEVICE
+from configs.hyperparameters.hyperparameters import models, DEVICE
 from probing.classifier import LinearProbeClassifier
 from probing.linear_probe import init_model, train
 from utils.logging import logger
@@ -36,8 +35,8 @@ if __name__ == '__main__':
             )
         else:
             handler = LatentDatasetLoader(
-                train_shard_path=latent_data_config["train_shard_path"],
-                val_shard_path=latent_data_config["val_shard_path"],
+                train_shard_path=TRAIN_LATENT_DIR,
+                val_shard_path=VAL_LATENT_DIR,
                 batch_size=model_config["batch_size"],
             )
         train_dataloader = handler.make_dataloader(split="train")
@@ -53,6 +52,6 @@ if __name__ == '__main__':
             train(pretrained_model, classifier, train_dataloader, val_dataloader, test_dataloader, (model_name, model_config), DEVICE)
         except Exception as e:
             logger.exception(f"An error occurred during training: {e}.")
-            save_file = os.path.join(model_config["output_dir"], f"interrupted_{model_name}.pth")
+            save_file = MODEL_CKPT_PROBING_DIR / f"interrupted_{model_name}.pth"
             torch.save(classifier.classifier.state_dict(), save_file)
             logger.info(f"Checkpoint saved at {save_file} due to training interruption.")

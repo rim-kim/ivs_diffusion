@@ -1,6 +1,4 @@
-import os
 from typing import Literal, Tuple, Union
-
 from omegaconf import DictConfig
 import hydra
 import torch
@@ -9,6 +7,7 @@ from tqdm import tqdm
 import wandb
 from wandb.sdk.wandb_config import Config
 
+from configs.path_configs.path_configs import MODEL_CKPT_PROBING_DIR
 from diffusion.model.t2i import T2ILatentRF2d
 from diffusion.model.unclip import UnclipLatentRF2d
 from probing.classifier import extract_features, LinearProbeClassifier
@@ -59,8 +58,8 @@ def train(
     """
     model_name, model_config = model_data
     run_name = f"{model_name}_{model_config['layer_num']}_{model_config['timestep']}"
-    os.makedirs(model_config["output_dir"], exist_ok=True)
-    os.makedirs(os.path.join(model_config['output_dir'], run_name), exist_ok=True)
+    full_run_name = MODEL_CKPT_PROBING_DIR / run_name
+    full_run_name.mkdir(exist_ok=True)
     wandb.init(project="linear_probe", name=run_name, config=model_config)
     wandb.config["device"] = device
     config = wandb.config
@@ -76,8 +75,8 @@ def train(
     classifier.train()
 
     # Initialize best validation accuracy
-    best_weighted_accuracy = 0.0  
-    best_model_path = os.path.join(config.output_dir, f"best_model_{model_name}.pth")
+    best_weighted_accuracy = 0.0
+    best_model_path = full_run_name / f"best_model_{model_name}.pth"
 
     logger.info(f"Starting training for {config.epochs} epochs...")
     for epoch in range(1, config.epochs+1):

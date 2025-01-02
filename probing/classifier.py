@@ -1,10 +1,8 @@
 from collections import defaultdict
-import os
 from typing import Literal, DefaultDict, Tuple, Union
-
+from pathlib import Path
 from jaxtyping import Float
 import torch
-from torch import nn
 
 from dataset.utils import get_captions
 from diffusion.model.t2i import T2ILatentRF2d
@@ -14,12 +12,12 @@ from utils.logging import logger
 
 
 def extract_features(
-    model: nn.Module,
+    model: torch.nn.Module,
     model_name: str,
     model_input: Tuple[Float[torch.Tensor, "..."], Float[torch.Tensor, "..."]],
     layer_start: int,
     timestep: Union[float, int],
-    feat_output_dir: str,
+    feat_output_dir: Path,
     batch_idx: int,
     mode: Literal["train", "val", "test"] = "train",
     save: bool = False,
@@ -76,14 +74,13 @@ def extract_features(
     if save:
         logger.info(f"Saving features from layer {layer_start} to {len(model.unet.mid_level)} for batch nr. {batch_idx}.")
         fname = f"{mode}_{batch_idx}_layer2features.pt"
-        os.makedirs(feat_output_dir, exist_ok=True)
-        save_path = os.path.join(feat_output_dir, fname)
+        save_path = feat_output_dir / fname
         torch.save(dict(layer2features), save_path)
 
     return layer2features
 
 
-class LinearProbeClassifier(nn.Module):
+class LinearProbeClassifier(torch.nn.Module):
     """
     A linear classifier for probing features extracted from a specific layer.
 
@@ -100,7 +97,7 @@ class LinearProbeClassifier(nn.Module):
         **kwargs,
     ):
         super().__init__()
-        self.classifier = nn.Linear(feature_dim, num_classes)
+        self.classifier = torch.nn.Linear(feature_dim, num_classes)
         self.layer_idx = layer_idx
 
     def forward(self, x: defaultdict[int, Float[torch.Tensor, "b ..."]], **data_kwargs) -> Float[torch.Tensor, "b"]:

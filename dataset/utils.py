@@ -19,6 +19,7 @@ from dataset.dataset_preprocessing import DatasetLoader
 from diffusion.model.modules.ae import AutoencoderKL
 from configs.tokens.tokens import HF_TOKEN
 from configs.hyperparameters.hyperparameters import DEVICE
+from configs.path_configs.path_configs import TOY_DATA_DIR, TRAIN_LATENT_DIR, VAL_LATENT_DIR
 
 def precompute_dataset_len(batch_size: int, split: Literal["train", "val"] = "train") -> int:
     """
@@ -49,10 +50,10 @@ def get_toy_data(batch_size: int, samples: Optional[int] = None) -> Tuple[DataLo
         Lambda(lambda x: x * 2 - 1)
     ])
     toy_train_data = datasets.CIFAR10(
-        root="./data/toy_data", train=True, download=True, transform=transformations
+        root=TOY_DATA_DIR, train=True, download=True, transform=transformations
     )
     toy_val_data = datasets.CIFAR10(
-        root="./data/toy_data", train=False, download=True, transform=transformations
+        root=TOY_DATA_DIR, train=False, download=True, transform=transformations
     )
     train_data = Subset(toy_train_data, list(range(train_samples)))
     val_data = Subset(toy_val_data, list(range(val_samples)))
@@ -93,7 +94,6 @@ def compute_latent_dataset(model, dataloader, output_path, samples_per_shard, de
     :param device: The device of the model and data. 'cuda' as default.
     """
     logger.info(f"Starting latent computation. Output path: '{output_path}', Samples per shard: {samples_per_shard}.")
-    os.makedirs(output_path, exist_ok=True)
     sample_id, shard_id = 0, 0
     shard_writer = None
     shard_sample_count = 0
@@ -145,7 +145,6 @@ def compute_latent_dataset(model, dataloader, output_path, samples_per_shard, de
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--output_path", type=str, default="data/imagenet_latent")
     parser.add_argument("--samples_per_shard", type=int, default=1000)
     parser.add_argument("--dataset", type=str, choices=["train", "val", "both"], default="both",
                         help="Choose the dataset to process: 'train', 'val', or 'both'.")
@@ -163,9 +162,9 @@ if __name__ == "__main__":
     if args.dataset in ["train", "both"]:
         train_dataloader = handler.make_dataloader(split="train")
         logger.info("Computing latents on training dataset...")
-        compute_latent_dataset(model, train_dataloader, f"{args.output_path}/train", args.samples_per_shard)
+        compute_latent_dataset(model, train_dataloader, TRAIN_LATENT_DIR, args.samples_per_shard)
     
     if args.dataset in ["val", "both"]:
         test_dataloader = handler.make_dataloader(split="val")
         logger.info("Computing latents on validation dataset...")
-        compute_latent_dataset(model, test_dataloader, f"{args.output_path}/val", args.samples_per_shard)
+        compute_latent_dataset(model, test_dataloader, VAL_LATENT_DIR, args.samples_per_shard)

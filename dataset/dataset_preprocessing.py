@@ -1,13 +1,13 @@
 import os
 import random
 from typing import Optional
+from pathlib import Path
 
 import numpy as np
 import torch
 from torchvision.transforms import Compose, Resize, ToTensor, Lambda
 import webdataset as wds
-
-
+from configs.path_configs.path_configs import IMAGENET_SHARDS_DIR, PREPROCESSED_IMAGENET_DIR
 class DatasetLoader:
     """
     A class to handle preprocessing and loading of datasets for training and validation.
@@ -30,12 +30,16 @@ class DatasetLoader:
         :param streaming: Whether to stream data or cache it locally.
         :param seed: Random seed for reproducibility.
         :param verbose: If True, enables verbose logging for shard info.
+        :param cache_dir: Directory for caching dataset shards if streaming is disabled. 
+        :param preprocessed_data_dir: Directory for storing preprocessed ImageNet data.
+        :param train_shards: Number of shards for the training dataset. Defaults to 1024.
+        :param val_shards: Number of shards for the validation dataset. Defaults to 64.
         """
         self.hf_token: str = hf_token
         self.batch_size: int = batch_size
         self.seed: int = seed
-        self.cache_dir: Optional[str] = None if streaming else "data/imagenet"
-        self.preprocessed_data_dir: str = "data/preprocessed_data"
+        self.cache_dir: Optional[Path] = None if streaming else IMAGENET_SHARDS_DIR
+        self.preprocessed_data_dir: Path = PREPROCESSED_IMAGENET_DIR
         self.train_shards: int = 1024
         self.val_shards: int = 64
 
@@ -102,8 +106,6 @@ class DatasetLoader:
         def make_sample(sample: dict) -> tuple:
             return transform(sample["jpg"]), sample["cls"]
         # Load the dataset
-        if self.cache_dir is not None:
-            os.makedirs(self.cache_dir, exist_ok=True)
         dataset = wds.WebDataset(
             dataset_url, 
             resampled=True,
@@ -157,7 +159,6 @@ class DatasetLoader:
         
         :param dataloader: A WebDataset dataloader to process and cache.
         """
-        os.makedirs(self.preprocessed_data_dir, exist_ok=True)
         for batch_idx, (images, labels) in enumerate(dataloader):
-            torch.save((images, labels), os.path.join(self.preprocessed_data_dir, f"batch_{batch_idx}.pt"))
+            torch.save((images, labels), self.preprocessed_data_dir / f"batch_{batch_idx}.pt")
             print(f"Saved batch {batch_idx} to {self.preprocessed_data_dir}")
