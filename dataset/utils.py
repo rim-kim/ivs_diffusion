@@ -78,7 +78,7 @@ def preprocess_caption(label: str) -> str:
     :return: A caption string describing the label.
     """
     first_label = label.split(",")[0]
-    caption = f"a photo of a {first_label}"
+    caption = f"a photo of {first_label}"
     return caption
 
 def compute_latent_dataset(model, dataloader, output_path, samples_per_shard, device='cuda'):

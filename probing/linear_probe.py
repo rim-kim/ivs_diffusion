@@ -4,7 +4,6 @@ from typing import Literal, Tuple, Union
 from omegaconf import DictConfig
 import hydra
 import torch
-from torch.nn.functional import cross_entropy
 from tqdm import tqdm
 import wandb
 from wandb.sdk.wandb_config import Config
@@ -73,7 +72,7 @@ def train(
 
     # Initialize best validation accuracy
     best_weighted_accuracy = 0.0  
-    best_model_path = os.path.join(config.output_dir, f"best_model_{model_name}.pth")
+    best_model_path = os.path.join(config.output_dir, run_name, f"best_model_{model_name}.pth")
 
     logger.info(f"Starting training for {config.epochs} epochs...")
     for epoch in range(1, config.epochs+1):
@@ -166,6 +165,7 @@ def test(
     total_top5 = 0
     total_loss = 0
     total = 0
+    loss_fn = torch.nn.CrossEntropyLoss()
 
     with torch.no_grad():
         for (imgs, targets) in tqdm(iterable=dataloader,
@@ -185,7 +185,7 @@ def test(
             for i in range(targets.size(0)):
                 if targets[i].item() in top5_preds[i].tolist():
                     total_top5 += 1
-            loss = cross_entropy(output, targets)
+            loss = loss_fn(output, targets)
             total_loss += loss.item() * targets.size(0)
             total += targets.size(0)
 
