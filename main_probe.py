@@ -1,18 +1,14 @@
 import os
 
-from huggingface_hub import login, get_token
 from omegaconf import OmegaConf
 import torch
 
 from dataset.latent_dataset import LatentDatasetLoader
-from configs.tokens.tokens import HF_TOKEN
 from configs.hyperparameters.hyperparameters import models, latent_data_config
 from probing.classifier import LinearProbeClassifier
 from probing.linear_probe import init_model, train
 from utils.logging import logger
 
-
-login(token=HF_TOKEN)
 
 if __name__ == '__main__':
     # Iterate over the model configs and hyperparams
@@ -42,6 +38,9 @@ if __name__ == '__main__':
         classifier.to(model_config["device"])
 
         # Train the classifier
+        logger.info(f"{model_name} train config:")
+        logger.info(f"lr={model_config['lr']}, batch_size={model_config['batch_size']}, eval_int={model_config['eval_interval']}")
+        logger.info(f"layer_num={model_config['layer_num']}, timestep={model_config['layer_num']}")
         try:
             train(pretrained_model, classifier, train_dataloader, val_dataloader, test_dataloader, (model_name, model_config))
         except Exception as e:
