@@ -78,15 +78,16 @@ def train(
     for epoch in range(1, config.epochs+1):
         batch_num = 0
         logger.info(f"Starting epoch {epoch}/{config.epochs}...")
-        for batch_idx, (imgs, targets) in enumerate(tqdm(iterable=train_dataloader,
+        for batch_idx, (imgs, targets, embedds) in enumerate(tqdm(iterable=train_dataloader,
                                     total=train_dataloader.nsamples,
                                     desc="Batches in training",
                                     unit=" Batch",
                                     colour="blue",
                                     leave=False)):
-            imgs, targets = imgs.to(config.device), targets.to(config.device)
+            imgs, targets, embedds = imgs.to(config.device), targets.to(config.device), embedds.to(config.device)
             # Extract features
-            features = extract_features(pretrained_model, model_name, (imgs, targets), config.layer_start, config.timestep, config.feat_output_dir, batch_idx)
+            features = extract_features(pretrained_model, model_name, (imgs, targets, embedds), 
+                                        config.layer_start, config.timestep, config.feat_output_dir, batch_idx)
             # Make predictions
             output = classifier(features)
             # Compute loss, gradients and update weights
@@ -168,14 +169,15 @@ def test(
     loss_fn = torch.nn.CrossEntropyLoss()
 
     with torch.no_grad():
-        for (imgs, targets) in tqdm(iterable=dataloader,
+        for (imgs, targets, embedds) in tqdm(iterable=dataloader,
                                                          total=dataloader.nsamples,
                                                          desc="Batches in validation", 
                                                          unit=" Batch",
                                                          colour="yellow"):
-            imgs, targets = imgs.to(config.device), targets.to(config.device)
+            imgs, targets, embedds = imgs.to(config.device), targets.to(config.device), embedds.to(config.device)
              # Extract features
-            features = extract_features(pretrained_model, model_name, (imgs, targets), config.layer_start, config.timestep, config.feat_output_dir, batch_idx, mode=split)
+            features = extract_features(pretrained_model, model_name, (imgs, targets, embedds), 
+                                        config.layer_start, config.timestep, config.feat_output_dir, batch_idx, mode=split)
             # Make predictions
             output = classifier(features)
             # Compute metrics

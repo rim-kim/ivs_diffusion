@@ -1,11 +1,8 @@
-EPOCHS, BATCH_SIZE, EVAL_INTERVAL, TIMESTEP, LAYER_NUM = 1, 32, 1000, 0.75, 14
-ROOT_DIR = "/home/z004x5av/repos/ivs_diffusion"
-data_config = {
-    "cache_dir": f"{ROOT_DIR}/data/imagenet",
-}
+EPOCHS, BATCH_SIZE, EVAL_INTERVAL, TIMESTEP, LAYER_NUM = 1, 64, 1000, 0.75, 14
+ROOT_DIR = "/root/Documents/ivs_diffusion"
 latent_data_config = {
-    "train_shard_path": f"{ROOT_DIR}/data/imagenet_latent/train",
-    "val_shard_path": f"{ROOT_DIR}/data/imagenet_latent/val",
+    "train_shard_path": f"{ROOT_DIR}/data/imagenet_latent_emb/train",
+    "val_shard_path": f"{ROOT_DIR}/data/imagenet_latent_emb/val",
 }
 models = {
     "unclip": {

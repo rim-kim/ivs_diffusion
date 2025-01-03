@@ -61,7 +61,9 @@ class LatentDatasetLoader:
             decompressed_latent = zlib.decompress(sample['latent.npy.zlib'])
             latent = torch.tensor(np.load(io.BytesIO(decompressed_latent)))
             label = int(sample['cls.txt'])
-            return latent, label
+            decompressed_embedd = zlib.decompress(sample['embedd.npy.zlib'])
+            embedd = torch.tensor(np.load(io.BytesIO(decompressed_embedd)))
+            return latent, label, embedd
         
         # Load the dataset
         dataset = wds.WebDataset(

@@ -40,7 +40,24 @@ class UnclipLatentRF2d(LatentRF2D):
         cond_time = self.mapping(time_emb + img_emb)
 
         return {"cond_norm": cond_time}
+    
+    def get_conditioning(self, t: Float[torch.Tensor, "b"], pre_emb: torch.Tensor, **kwargs) -> dict[str, torch.Tensor]:
+        if self.time_cond_type == "sigma":
+            c_noise = torch.log(t) / 4
+        elif self.time_cond_type == "rf_t":
+            c_noise = t
+        else:
+            raise NotImplementedError(f'Unknown time conditioning type "{self.time_cond_type}".')
+        time_emb = self.time_in_proj(self.time_emb(c_noise[..., None]))
 
+        keep_idx = (torch.rand(time_emb.shape[0]) >= self.c_dropout).nonzero().flatten()
+
+        img_emb = torch.zeros_like(time_emb)
+        img_emb[keep_idx] = pre_emb
+
+        cond_time = self.mapping(time_emb + img_emb)
+
+        return {"cond_norm": cond_time}
 
     def get_unconditional_conditioning(self, t: Float[torch.Tensor, "b"], **kwargs) -> dict[str, torch.Tensor]:
         if self.time_cond_type == "sigma":
@@ -61,6 +78,9 @@ class UnclipLatentRF2d(LatentRF2D):
     def get_features(self, x: Float[torch.Tensor, "b ..."], t: int):
         latent = self.ae.encode(x)
         return super().get_features(x=latent, c_img=x, t=t)
+    
+    def get_features(self, x: Float[torch.Tensor, "b ..."], t: int, pre_emb: torch.Tensor):
+        return super().get_features(x=x, pre_emb=pre_emb, t=t)
 
     def sample(
         self,

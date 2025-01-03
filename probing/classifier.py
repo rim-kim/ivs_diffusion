@@ -16,7 +16,7 @@ from utils.logging import logger
 def extract_features(
     model: nn.Module,
     model_name: str,
-    model_input: Tuple[Float[torch.Tensor, "..."], Float[torch.Tensor, "..."]],
+    model_input: Tuple[Float[torch.Tensor, "..."], Float[torch.Tensor, "..."], Float[torch.Tensor, "..."]],
     layer_start: int,
     timestep: Union[float, int],
     feat_output_dir: str,
@@ -38,7 +38,7 @@ def extract_features(
     :param save: Whether to save the extracted features to a file. Defaults to False.
     :return: A dictionary mapping layer indices to feature tensors.
     """
-    imgs, targets = model_input
+    imgs, targets, embedds = model_input
     layer2features = defaultdict(lambda: torch.empty(0))
     hooks = []
 
@@ -64,7 +64,7 @@ def extract_features(
                 raise ValueError(f"Unexpected model_name: {model_name}")
             model.get_features(imgs, timestep, captions)
         elif isinstance(model, UnclipLatentRF2d):
-            model.get_features(imgs, timestep)
+            model.get_features(imgs, timestep, embedds)
         else:
             raise TypeError(f"Unsupported model type: {type(model).__name__}")
 

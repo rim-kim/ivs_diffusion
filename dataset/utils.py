@@ -5,7 +5,9 @@ import os
 from typing import Literal, Tuple, Optional, List
 import zlib
 
+import hydra
 import numpy as np
+from omegaconf import OmegaConf
 import torch
 from torch.utils.data import DataLoader, Subset
 from torchvision import datasets
@@ -81,11 +83,12 @@ def preprocess_caption(label: str) -> str:
     caption = f"a photo of {first_label}"
     return caption
 
-def compute_latent_dataset(model, dataloader, output_path, samples_per_shard, device='cuda'):
+def compute_latent_dataset(model, unclip, dataloader, output_path, samples_per_shard, device='cuda'):
     """
-    Computes and collect latent from model.
+    Computes and collect latent from model and image embeddings.
 
     :param model: The model to get latent from.
+    :param img_embedder: The unclip model to get image embeddings.
     :param dataloder: The dataloader to iterate over.
     :param output_path: The path of directory to store latent.
     :param samples_per_shard: The number of samples per shard file.
@@ -101,8 +104,13 @@ def compute_latent_dataset(model, dataloader, output_path, samples_per_shard, de
             # convert to cpu to write .tar
             latents = model.encode(imgs).cpu()
             targets = targets.cpu().numpy()
+            # get image embeddiing and convert it to cpu
+            embedds = unclip.img_embedder(imgs)
+            embedds = unclip.img_proj(embedds)
+            embedds = unclip.norm(embedds)
+            embedds = embedds.cpu()
 
-        for latent, label in zip(latents, targets):
+        for latent, label, embedd in zip(latents, targets, embedds):
             # create new shard for every samples_per_shard
             if sample_id % samples_per_shard == 0:
                 if shard_writer:
@@ -116,11 +124,17 @@ def compute_latent_dataset(model, dataloader, output_path, samples_per_shard, de
             latent_buffer.seek(0)
             # compress npy
             compressed_latent = zlib.compress(latent_buffer.read())
+            # serialize numpy embedding in buffer and compress
+            embedd_buffer = io.BytesIO()
+            np.save(embedd_buffer, embedd.numpy())
+            embedd_buffer.seek(0)
+            compressed_embedd = zlib.compress(embedd_buffer.read())
 
-            # write serialized latent into the shard
+            # write serialized data into the shard
             shard_writer.write({
                 '__key__': f"{sample_id:07d}",
                 'latent.npy.zlib': compressed_latent,
+                'embedd.npy.zlib': compressed_embedd,
                 'cls.txt': str(label)
             })
             sample_id += 1
@@ -134,18 +148,24 @@ if __name__ == "__main__":
     parser.add_argument("--data_path", type=str)
     parser.add_argument("--output_path", type=str)
     parser.add_argument("--samples_per_shard", type=int, default=1000)
+    parser.add_argument("--cfg_path", type=str)
+    parser.add_argument("--ckpt_path", type=str)
     args = parser.parse_args()
     handler = DatasetLoader(
         hf_token=HF_TOKEN,
         cache_dir=args.data_path,
-        preprocessed_data_dir="",
         batch_size=64,
-        epochs=1,
     )
-    # train_dataloader = handler.make_dataloader(split="train")
+    train_dataloader = handler.make_dataloader(split="train")
     test_dataloader = handler.make_dataloader(split="val")
     model = AutoencoderKL()
     model.eval().to('cuda')
-    # compute_latent_dataset(model, train_dataloader, f"{args.output_path}/train", args.samples_per_shard)
-    compute_latent_dataset(model, test_dataloader, f"{args.output_path}/val", args.samples_per_shard)
+    cfg = OmegaConf.load(args.cfg_path)
+    unclip = hydra.utils.instantiate(cfg).cuda()
+    unclip.load_state_dict(
+        {k: v for k, v in torch.load(args.ckpt_path, map_location='cuda').items() if not 'ae' in k},
+        strict=False)
+    unclip.eval()
+    compute_latent_dataset(model, unclip, train_dataloader, f"{args.output_path}/train", args.samples_per_shard)
+    compute_latent_dataset(model, unclip, test_dataloader, f"{args.output_path}/val", args.samples_per_shard)
     
