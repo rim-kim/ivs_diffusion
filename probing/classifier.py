@@ -7,6 +7,7 @@ import torch
 from dataset.utils import get_captions
 from diffusion.model.t2i import T2ILatentRF2d
 from diffusion.model.unclip import UnclipLatentRF2d
+from configs.path_configs.path_configs import FEATURES_DIR
 
 from utils.logging import logger
 
@@ -17,8 +18,8 @@ def extract_features(
     model_input: Tuple[Float[torch.Tensor, "..."], Float[torch.Tensor, "..."]],
     layer_start: int,
     timestep: Union[float, int],
-    feat_output_dir: Path,
     batch_idx: int,
+    feat_output_dir: Path = FEATURES_DIR,
     mode: Literal["train", "val", "test"] = "train",
     save: bool = False,
 ) -> DefaultDict[int, Float[torch.Tensor, "..."]]:
@@ -30,8 +31,8 @@ def extract_features(
     :param model_input: Input tensor for the model.
     :param layer_start: Starting layer index for feature extraction.
     :param timestep: The amount of noise to diffuse.
-    :param feat_output_dir: Directory to save extracted features (if save is True).
     :param batch_idx: Batch index, used for naming saved feature files.
+    :param feat_output_dir: Directory to save extracted features (if save is True).
     :param mode: Mode of operation, can be "train", "val", or "test". Defaults to "train".
     :param save: Whether to save the extracted features to a file. Defaults to False.
     :return: A dictionary mapping layer indices to feature tensors.

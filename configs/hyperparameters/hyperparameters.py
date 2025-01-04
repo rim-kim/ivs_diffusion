@@ -1,4 +1,4 @@
-from configs.path_configs.path_configs import MODEL_CONFIGS_DIR, MODEL_CKPT_DIR, FEATURES_DIR
+from configs.path_configs.path_configs import MODEL_CONFIGS_DIR, MODEL_CKPT_DIR
 
 EPOCHS, BATCH_SIZE, EVAL_INTERVAL, LR = 1, 32, 1000, 0.001
 TIMESTEP, LAYER_NUM, LAYER_START = 0.75, 14, 14
@@ -11,7 +11,6 @@ models = {
         "timestep": TIMESTEP,
         "layer_num": LAYER_NUM,
         "layer_start": LAYER_START,
-        "feat_output_dir": FEATURES_DIR,
         "lr": LR,
         "epochs": EPOCHS,
         "batch_size": BATCH_SIZE,
@@ -24,7 +23,6 @@ models = {
         "timestep": TIMESTEP,
         "layer_num": LAYER_NUM,
         "layer_start": LAYER_START,
-        "feat_output_dir": FEATURES_DIR,
         "lr": LR,
         "epochs": EPOCHS,
         "batch_size": BATCH_SIZE,
@@ -37,7 +35,6 @@ models = {
         "timestep": TIMESTEP,
         "layer_num": LAYER_NUM,
         "layer_start": LAYER_START,
-        "feat_output_dir": FEATURES_DIR,
         "lr": LR,
         "epochs": EPOCHS,
         "batch_size": BATCH_SIZE,

@@ -90,7 +90,7 @@ def train(
                                     leave=False)):
             imgs, targets = imgs.to(config.device), targets.to(config.device)
             # Extract features
-            features = extract_features(pretrained_model, model_name, (imgs, targets), config.layer_start, config.timestep, config.feat_output_dir, batch_idx)
+            features = extract_features(pretrained_model, model_name, (imgs, targets), config.layer_start, config.timestep, batch_idx)
             # Make predictions
             output = classifier(features)
             # Compute loss, gradients and update weights
@@ -178,7 +178,7 @@ def test(
                                                          colour="yellow"):
             imgs, targets = imgs.to(config.device), targets.to(config.device)
              # Extract features
-            features = extract_features(pretrained_model, model_name, (imgs, targets), config.layer_start, config.timestep, config.feat_output_dir, batch_idx, mode=split)
+            features = extract_features(pretrained_model, model_name, (imgs, targets), config.layer_start, config.timestep, batch_idx, mode=split)
             # Make predictions
             output = classifier(features)
             # Compute metrics

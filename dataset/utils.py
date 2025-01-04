@@ -1,7 +1,6 @@
 import argparse
 import io
 import math
-import os
 from typing import Literal, Tuple, Optional, List
 import zlib
 
@@ -85,7 +84,7 @@ def preprocess_caption(label: str) -> str:
 
 def compute_latent_dataset(model, dataloader, output_path, samples_per_shard, device=DEVICE):
     """
-    Computes and collect latent from model.
+    Computes and collects latent from model.
 
     :param model: The model to get latent from.
     :param dataloder: The dataloader to iterate over.
