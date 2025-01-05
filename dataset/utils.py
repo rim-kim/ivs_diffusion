@@ -14,7 +14,7 @@ from webdataset import TarWriter
 
 from utils.logging import logger
 from dataset.imagenet_classes import classes
-from dataset.dataset_preprocessing import DatasetLoader
+from dataset.dataset_loaders import DatasetLoader
 from diffusion.model.modules.ae import AutoencoderKL
 from configs.tokens.tokens import HF_TOKEN
 from configs.hyperparameters.hyperparameters import DEVICE
@@ -159,11 +159,11 @@ if __name__ == "__main__":
     
     # Process based on the selected dataset
     if args.dataset in ["train", "both"]:
-        train_dataloader = handler.make_dataloader(split="train")
+        train_dataloader = handler.get_dataloader(split="train")
         logger.info("Computing latents on training dataset...")
         compute_latent_dataset(model, train_dataloader, TRAIN_LATENT_DIR, args.samples_per_shard)
     
     if args.dataset in ["val", "both"]:
-        test_dataloader = handler.make_dataloader(split="val")
+        test_dataloader = handler.get_dataloader(split="val")
         logger.info("Computing latents on validation dataset...")
         compute_latent_dataset(model, test_dataloader, VAL_LATENT_DIR, args.samples_per_shard)

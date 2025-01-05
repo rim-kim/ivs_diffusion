@@ -2,9 +2,8 @@ from huggingface_hub import login, get_token
 from omegaconf import OmegaConf
 import torch
 
-from dataset.dataset_preprocessing import DatasetLoader
-from dataset.latent_dataset import LatentDatasetLoader
-from configs.path_configs.path_configs import TRAIN_LATENT_DIR, VAL_LATENT_DIR, MODEL_CKPT_PROBING_DIR
+from dataset.dataset_loaders import DatasetLoader, LatentDatasetLoader
+from configs.path_configs.path_configs import MODEL_CKPT_PROBING_DIR
 from configs.tokens.tokens import HF_TOKEN
 from configs.hyperparameters.hyperparameters import models, DEVICE
 from probing.classifier import LinearProbeClassifier
@@ -34,14 +33,11 @@ if __name__ == '__main__':
                 streaming=False,
             )
         else:
-            handler = LatentDatasetLoader(
-                train_shard_path=TRAIN_LATENT_DIR,
-                val_shard_path=VAL_LATENT_DIR,
-                batch_size=model_config["batch_size"],
-            )
-        train_dataloader = handler.make_dataloader(split="train")
-        test_dataloader = handler.make_dataloader(split="val")
-        val_dataloader = handler.make_dataloader(split="val", is_reduced=True)
+            handler = LatentDatasetLoader(batch_size=model_config["batch_size"])
+
+        train_dataloader = handler.get_dataloader(split="train")
+        test_dataloader = handler.get_dataloader(split="val")
+        val_dataloader = handler.get_dataloader(split="val", is_reduced=True)
 
         # Instantiate the Linear Classifier
         classifier = LinearProbeClassifier(layer_idx=model_config["layer_num"])
