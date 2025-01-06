@@ -19,7 +19,7 @@ TOKENS_DIR = CONFIGS_DIR / "tokens"
 # Second-level dirs (data)
 FEATURES_DIR = DATA_DIR / "features"
 IMAGENET_SHARDS_DIR = DATA_DIR / "imagenet_shards"
-IMAGENET_LATENT_DIR = DATA_DIR / "imagenet_latent"
+IMAGENET_LATENT_AND_CLIP_DIR = DATA_DIR / "imagenet_latent_and_clip"
 TOY_DATA_DIR = DATA_DIR / "toy_data"
 PREPROCESSED_IMAGENET_DIR = DATA_DIR / "preprocessed_data"
 
@@ -33,8 +33,8 @@ LOG_DIR_PATH = LOGS_DIR / datetime.now().strftime("%y%m%d-%H%M%S")
 LOG_FILE_PATH = LOG_DIR_PATH / "linear_probing.log"
 
 # Third-level dirs (data)
-TRAIN_LATENT_DIR = IMAGENET_LATENT_DIR / "train"
-VAL_LATENT_DIR = IMAGENET_LATENT_DIR / "val"
+TRAIN_LATENT_AND_CLIP_DIR = IMAGENET_LATENT_AND_CLIP_DIR / "train"
+VAL_LATENT_AND_CLIP_DIR = IMAGENET_LATENT_AND_CLIP_DIR / "val"
 
 dirs = [
     CONFIGS_DIR,
@@ -46,13 +46,13 @@ dirs = [
     TOKENS_DIR,
     FEATURES_DIR,
     IMAGENET_SHARDS_DIR,
-    IMAGENET_LATENT_DIR,
+    IMAGENET_LATENT_AND_CLIP_DIR,
     TOY_DATA_DIR,
     PREPROCESSED_IMAGENET_DIR,
     MODEL_CKPT_PROBING_DIR,
     LOG_DIR_PATH,
-    TRAIN_LATENT_DIR,
-    VAL_LATENT_DIR
+    TRAIN_LATENT_AND_CLIP_DIR,
+    VAL_LATENT_AND_CLIP_DIR,
 ]
 
 def create_dirs(dirs: List[Path]) -> None:

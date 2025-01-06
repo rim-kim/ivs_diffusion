@@ -10,7 +10,7 @@ import io
 import zlib
 from typing import Optional, Literal, Tuple, Dict
 
-from configs.path_configs.path_configs import IMAGENET_SHARDS_DIR, PREPROCESSED_IMAGENET_DIR, TRAIN_LATENT_DIR, VAL_LATENT_DIR
+from configs.path_configs.path_configs import IMAGENET_SHARDS_DIR, PREPROCESSED_IMAGENET_DIR, TRAIN_LATENT_AND_CLIP_DIR, VAL_LATENT_AND_CLIP_DIR
 
 
 class BaseDatasetLoader(ABC):
@@ -99,7 +99,7 @@ class BaseDatasetLoader(ABC):
         if hasattr(self, "decoding_mode"):
             dataset = dataset.decode(self.decoding_mode)
 
-        # Adjust and batch dataset samples
+        # Process and batch dataset samples
         dataset = dataset.map(self.process_sample).batched(self.batch_size)
 
         if is_training:
@@ -201,7 +201,6 @@ class DatasetLoader(BaseDatasetLoader):
                 f"imagenet1k-validation-{{00..{self.val_shards - 1}}}.tar -H 'Authorization:Bearer {self.hf_token}'"
             )
     
-
     def precompute_and_cache(self, dataloader: wds.WebLoader) -> None:
         """
         Precompute and cache the preprocessed tensors for the dataset.
@@ -234,8 +233,8 @@ class LatentDatasetLoader(BaseDatasetLoader):
             val_shards (int): Number of validation latent shards available.
         """
         super().__init__(batch_size, seed, verbose)
-        self.train_shard_path: Path = TRAIN_LATENT_DIR
-        self.val_shard_path: Path = VAL_LATENT_DIR
+        self.train_shard_path: Path = TRAIN_LATENT_AND_CLIP_DIR
+        self.val_shard_path: Path = VAL_LATENT_AND_CLIP_DIR
         self.train_shards: int = len(list(self.train_shard_path.glob("latent-*.tar")))
         self.val_shards: int = len(list(self.val_shard_path.glob("latent-*.tar")))
 
@@ -247,9 +246,11 @@ class LatentDatasetLoader(BaseDatasetLoader):
         :return: A tuple containing the latent tensor and its corresponding class label.
         """
         decompressed_latent = zlib.decompress(sample['latent.npy.zlib'])
+        decompressed_clip_emb = zlib.decompress(sample['clip_emb.npy.zlib'])
         latent = torch.tensor(np.load(io.BytesIO(decompressed_latent)))
+        clip_emb = torch.tensor(np.load(io.BytesIO(decompressed_clip_emb)))
         label = int(sample['cls.txt'])
-        return latent, label
+        return latent, label, clip_emb
 
     def get_dataset_path(self, split: Literal["train", "val"]) -> str:
         """
