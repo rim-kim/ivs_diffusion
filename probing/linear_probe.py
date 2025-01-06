@@ -1,6 +1,4 @@
-import os
 from typing import Literal, Tuple, Union
-
 from omegaconf import DictConfig
 import hydra
 import torch
@@ -9,6 +7,7 @@ from tqdm import tqdm
 import wandb
 from wandb.sdk.wandb_config import Config
 
+from configs.path_configs.path_configs import MODEL_CKPT_PROBING_DIR
 from diffusion.model.t2i import T2ILatentRF2d
 from diffusion.model.unclip import UnclipLatentRF2d
 from probing.classifier import extract_features, LinearProbeClassifier
@@ -17,19 +16,20 @@ from utils.logging import logger
 
 wandb.login()
 
-def init_model(cfg: DictConfig, ckpt_path: str) -> torch.nn.Module:
+def init_model(cfg: DictConfig, ckpt_path: str, device: str) -> torch.nn.Module:
     """
     Initializes the pre-trained model from a given configuration and checkpoint file.
 
     :param cfg: The configuration object containing the pre-trained model setup details.
     :param ckpt_path: Path to the pre-trained model checkpoint file.
+    :param device: The device on which the model will be initialized and run (e.g., "cuda").
     :return: The initialized pre-trained model with the checkpoint loaded.
     """
     logger.info("Initializing the pre-trained model...")
     pretrained_model = hydra.utils.instantiate(cfg)
-    pretrained_model = pretrained_model.cuda()
+    pretrained_model = pretrained_model.to(device)
     pretrained_model.load_state_dict(
-        {k: v for k, v in torch.load(ckpt_path, map_location='cuda').items() if not 'ae' in k},
+        {k: v for k, v in torch.load(ckpt_path, map_location=device).items() if not 'ae' in k},
         strict=False)
     pretrained_model.eval()
     logger.info(f"Model {pretrained_model.__class__.__name__} initialized and checkpoint loaded successfully.")
@@ -43,6 +43,7 @@ def train(
     val_dataloader: torch.utils.data.DataLoader,
     test_dataloader: torch.utils.data.DataLoader,
     model_data: Tuple[str, dict],
+    device: str,
     ) -> None:
     """
     Trains the linear probe classifier using extracted features from the pre-trained model.
@@ -53,12 +54,14 @@ def train(
     :param val_dataloader: DataLoader for the validation dataset.
     :param test_dataloader: DataLoader for final full validation dataset.
     :param model_data: A tuple containing the model name and its configuration dictionary.
+    :param device: The device on which computations will be performed (e.g., "cuda").
     """
     model_name, model_config = model_data
     run_name = f"{model_name}_{model_config['layer_num']}_{model_config['timestep']}"
-    os.makedirs(model_config["output_dir"], exist_ok=True)
-    os.makedirs(os.path.join(model_config['output_dir'], run_name), exist_ok=True)
+    full_run_name = MODEL_CKPT_PROBING_DIR / run_name
+    full_run_name.mkdir(exist_ok=True)
     wandb.init(project="linear_probe", name=run_name, config=model_config)
+    wandb.config["device"] = device
     config = wandb.config
     wandb.define_metric(name="train_batch_loss", step_metric="train_step")
     wandb.define_metric(name="top1_accuracy", step_metric="val1_step")
@@ -72,22 +75,23 @@ def train(
     classifier.train()
 
     # Initialize best validation accuracy
-    best_weighted_accuracy = 0.0  
-    best_model_path = os.path.join(config.output_dir, f"best_model_{model_name}.pth")
+    best_weighted_accuracy = 0.0
+    best_model_path = full_run_name / f"best_model_{model_name}.pth"
 
     logger.info(f"Starting training for {config.epochs} epochs...")
     for epoch in range(1, config.epochs+1):
         batch_num = 0
         logger.info(f"Starting epoch {epoch}/{config.epochs}...")
-        for batch_idx, (imgs, targets) in enumerate(tqdm(iterable=train_dataloader,
+        for batch_idx, data in enumerate(tqdm(iterable=train_dataloader,
                                     total=train_dataloader.nsamples,
                                     desc="Batches in training",
                                     unit=" Batch",
                                     colour="blue",
                                     leave=False)):
-            imgs, targets = imgs.to(config.device), targets.to(config.device)
+            imgs, targets, clip_embds = data
+            imgs, targets, clip_embds = imgs.to(config.device), targets.to(config.device), clip_embds.to(config.device)
             # Extract features
-            features = extract_features(pretrained_model, model_name, (imgs, targets), config.layer_start, config.timestep, config.feat_output_dir, batch_idx)
+            features = extract_features(pretrained_model, model_name, data, config.layer_start, config.timestep, batch_idx)
             # Make predictions
             output = classifier(features)
             # Compute loss, gradients and update weights
@@ -175,7 +179,7 @@ def test(
                                                          colour="yellow"):
             imgs, targets = imgs.to(config.device), targets.to(config.device)
              # Extract features
-            features = extract_features(pretrained_model, model_name, (imgs, targets), config.layer_start, config.timestep, config.feat_output_dir, batch_idx, mode=split)
+            features = extract_features(pretrained_model, model_name, (imgs, targets), config.layer_start, config.timestep, batch_idx, mode=split)
             # Make predictions
             output = classifier(features)
             # Compute metrics

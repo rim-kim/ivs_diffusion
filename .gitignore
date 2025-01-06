@@ -189,6 +189,6 @@ tokens.py
 # Third Party Package repos
 third_party/
 
-# logs, slurm logs
+# Logs
 logs/
 slurm_logs/
