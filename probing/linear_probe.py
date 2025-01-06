@@ -82,15 +82,16 @@ def train(
     for epoch in range(1, config.epochs+1):
         batch_num = 0
         logger.info(f"Starting epoch {epoch}/{config.epochs}...")
-        for batch_idx, (imgs, targets) in enumerate(tqdm(iterable=train_dataloader,
+        for batch_idx, data in enumerate(tqdm(iterable=train_dataloader,
                                     total=train_dataloader.nsamples,
                                     desc="Batches in training",
                                     unit=" Batch",
                                     colour="blue",
                                     leave=False)):
-            imgs, targets = imgs.to(config.device), targets.to(config.device)
+            imgs, targets, clip_embds = data
+            imgs, targets, clip_embds = imgs.to(config.device), targets.to(config.device), clip_embds.to(config.device)
             # Extract features
-            features = extract_features(pretrained_model, model_name, (imgs, targets), config.layer_start, config.timestep, batch_idx)
+            features = extract_features(pretrained_model, model_name, data, config.layer_start, config.timestep, batch_idx)
             # Make predictions
             output = classifier(features)
             # Compute loss, gradients and update weights

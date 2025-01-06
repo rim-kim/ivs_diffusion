@@ -30,7 +30,7 @@ class UnclipLatentRF2d(LatentRF2D):
 
         keep_idx = (torch.rand(time_emb.shape[0]) >= self.c_dropout).nonzero().flatten()
         c_img = c_img[keep_idx]
-        c_img = self.img_embedder(c_img)
+        c_img = kwargs["clip_embds"]
         c_img = self.img_proj(c_img)
         c_img = self.norm(c_img)
 
@@ -58,9 +58,8 @@ class UnclipLatentRF2d(LatentRF2D):
     def forward(self, x: Float[torch.Tensor, "b ..."], **data_kwargs) -> Float[torch.Tensor, "b"]:
         return super().forward(x=x, c_img=x, **data_kwargs)
     
-    def get_features(self, x: Float[torch.Tensor, "b ..."], t: int):
-        latent = self.ae.encode(x)
-        return super().get_features(x=latent, c_img=x, t=t)
+    def get_features(self, x: Float[torch.Tensor, "b ..."], t: int, clip_embds: Float[torch.Tensor, "b ..."]):
+        return super().get_features(x, c_img=x, t=t, clip_embds=clip_embds)
 
     def sample(
         self,

@@ -1,17 +1,13 @@
-from huggingface_hub import login, get_token
 from omegaconf import OmegaConf
 import torch
 
-from dataset.dataset_loaders import DatasetLoader, LatentDatasetLoader
+from dataset.dataset_loaders import LatentDatasetLoader
 from configs.path_configs.path_configs import MODEL_CKPT_PROBING_DIR
-from configs.tokens.tokens import HF_TOKEN
 from configs.hyperparameters.hyperparameters import models, DEVICE
 from probing.classifier import LinearProbeClassifier
 from probing.linear_probe import init_model, train
 from utils.logging import logger
 
-
-login(token=HF_TOKEN)
 
 if __name__ == '__main__':
     if not torch.cuda.is_available():
@@ -26,15 +22,7 @@ if __name__ == '__main__':
         pretrained_model = init_model(cfg, model_config["ckpt_path"], DEVICE)
             
         # Call the DataLoader handler and DataLoaders
-        if model_name == "unclip":
-            handler = DatasetLoader(
-                hf_token=get_token(),
-                batch_size=model_config["batch_size"],
-                streaming=False,
-            )
-        else:
-            handler = LatentDatasetLoader(batch_size=model_config["batch_size"])
-
+        handler = LatentDatasetLoader(batch_size=model_config["batch_size"])
         train_dataloader = handler.get_dataloader(split="train")
         test_dataloader = handler.get_dataloader(split="val")
         val_dataloader = handler.get_dataloader(split="val", is_reduced=True)
