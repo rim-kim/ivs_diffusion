@@ -60,7 +60,7 @@ def train(
     run_name = f"{model_name}_{model_config['layer_num']}_{model_config['timestep']}"
     full_run_name = MODEL_CKPT_PROBING_DIR / run_name
     full_run_name.mkdir(exist_ok=True)
-    wandb.init(project="linear_probe", name=run_name, config=model_config)
+    wandb.init(project=f"linear_probe_bs_{model_config['batch_size']}", name=run_name, config=model_config)
     wandb.config["device"] = device
     config = wandb.config
     wandb.define_metric(name="train_batch_loss", step_metric="train_step")
@@ -82,16 +82,15 @@ def train(
     for epoch in range(1, config.epochs+1):
         batch_num = 0
         logger.info(f"Starting epoch {epoch}/{config.epochs}...")
-        for batch_idx, data in enumerate(tqdm(iterable=train_dataloader,
+        for batch_idx, (imgs, targets, clip_embds) in enumerate(tqdm(iterable=train_dataloader,
                                     total=train_dataloader.nsamples,
                                     desc="Batches in training",
                                     unit=" Batch",
                                     colour="blue",
                                     leave=False)):
-            imgs, targets, clip_embds = data
             imgs, targets, clip_embds = imgs.to(config.device), targets.to(config.device), clip_embds.to(config.device)
             # Extract features
-            features = extract_features(pretrained_model, model_name, data, config.layer_start, config.timestep, batch_idx)
+            features = extract_features(pretrained_model, model_name, (imgs, targets, clip_embds), config.layer_start, config.timestep, batch_idx)
             # Make predictions
             output = classifier(features)
             # Compute loss, gradients and update weights
@@ -172,14 +171,14 @@ def test(
     total = 0
 
     with torch.no_grad():
-        for (imgs, targets) in tqdm(iterable=dataloader,
-                                                         total=dataloader.nsamples,
-                                                         desc="Batches in validation", 
-                                                         unit=" Batch",
-                                                         colour="yellow"):
-            imgs, targets = imgs.to(config.device), targets.to(config.device)
+        for (imgs, targets, clip_embds) in tqdm(iterable=dataloader,
+                        total=dataloader.nsamples,
+                        desc="Batches in validation", 
+                        unit=" Batch",
+                        colour="yellow"):
+            imgs, targets, clip_embds = imgs.to(config.device), targets.to(config.device), clip_embds.to(config.device)
              # Extract features
-            features = extract_features(pretrained_model, model_name, (imgs, targets), config.layer_start, config.timestep, batch_idx, mode=split)
+            features = extract_features(pretrained_model, model_name, (imgs, targets, clip_embds), config.layer_start, config.timestep, batch_idx, mode=split)
             # Make predictions
             output = classifier(features)
             # Compute metrics
