@@ -1,7 +1,7 @@
 from configs.path_configs.path_configs import MODEL_CONFIGS_DIR, MODEL_CKPT_DIR
 
 EPOCHS, BATCH_SIZE, EVAL_INTERVAL, LR = 1, 32, 1000, 0.001
-TIMESTEP, LAYER_NUM, LAYER_START = 0.75, 14, 14
+TIMESTEP, LAYER_NUM, LAYER_START = 0.25, 14, 14
 DEVICE = "cuda"
 
 models = {
