@@ -28,7 +28,7 @@ if __name__ == '__main__':
         val_dataloader = handler.get_dataloader(split="val", is_reduced=True)
 
         # Instantiate the Linear Classifier
-        classifier = LinearProbeClassifier(layer_idx=model_config["layer_num"])
+        classifier = LinearProbeClassifier(layer_idx=model_config["layer_idx"])
         classifier.to(DEVICE)
 
         # Train the classifier

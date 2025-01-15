@@ -57,10 +57,10 @@ def train(
     :param device: The device on which computations will be performed (e.g., "cuda").
     """
     model_name, model_config = model_data
-    run_name = f"{model_name}_{model_config['layer_num']}_{model_config['timestep']}"
+    run_name = f"{model_name}_{model_config['layer_idx']}_{model_config['timestep']}"
     full_run_name = MODEL_CKPT_PROBING_DIR / run_name
     full_run_name.mkdir(exist_ok=True)
-    wandb.init(project=f"linear_probe_bs_{model_config['batch_size']}", name=run_name, config=model_config)
+    wandb.init(project=f"linear_probe", name=run_name, config=model_config)
     wandb.config["device"] = device
     config = wandb.config
     wandb.define_metric(name="train_batch_loss", step_metric="train_step")
@@ -90,7 +90,7 @@ def train(
                                     leave=False)):
             imgs, targets, clip_embds = imgs.to(config.device), targets.to(config.device), clip_embds.to(config.device)
             # Extract features
-            features = extract_features(pretrained_model, model_name, (imgs, targets, clip_embds), config.layer_start, config.timestep, batch_idx)
+            features = extract_features(pretrained_model, model_name, config.layer_idx, (imgs, targets, clip_embds), config.timestep)
             # Make predictions
             output = classifier(features)
             # Compute loss, gradients and update weights
@@ -178,7 +178,7 @@ def test(
                         colour="yellow"):
             imgs, targets, clip_embds = imgs.to(config.device), targets.to(config.device), clip_embds.to(config.device)
              # Extract features
-            features = extract_features(pretrained_model, model_name, (imgs, targets, clip_embds), config.layer_start, config.timestep, batch_idx, mode=split)
+            features = extract_features(pretrained_model, model_name, config.layer_idx, (imgs, targets, clip_embds), config.timestep)
             # Make predictions
             output = classifier(features)
             # Compute metrics
