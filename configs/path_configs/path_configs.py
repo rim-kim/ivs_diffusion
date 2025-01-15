@@ -17,7 +17,6 @@ MODEL_CONFIGS_DIR = CONFIGS_DIR / "model"
 TOKENS_DIR = CONFIGS_DIR / "tokens"
 
 # Second-level dirs (data)
-FEATURES_DIR = DATA_DIR / "features"
 IMAGENET_SHARDS_DIR = DATA_DIR / "imagenet_shards"
 IMAGENET_LATENT_AND_CLIP_DIR = DATA_DIR / "imagenet_latent_and_clip"
 TOY_DATA_DIR = DATA_DIR / "toy_data"
@@ -44,7 +43,6 @@ dirs = [
     HYPERPARAMS_DIR,
     MODEL_CONFIGS_DIR,
     TOKENS_DIR,
-    FEATURES_DIR,
     IMAGENET_SHARDS_DIR,
     IMAGENET_LATENT_AND_CLIP_DIR,
     TOY_DATA_DIR,
