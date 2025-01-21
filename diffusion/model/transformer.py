@@ -15,7 +15,7 @@ class Level(nn.ModuleList):
 
 
 class Transformer(nn.Module):
-    def __init__(self):
+    def __init__(self, timestep_width=1024):
         super().__init__()
 
         in_channels = 4  # VAE latent channels
@@ -25,7 +25,6 @@ class Transformer(nn.Module):
         transformer_width = 1152
         transformer_depth = 28
         d_heads = 72
-        timestep_width = 1024
 
         self.mid_level, self.mid_merge, self.mid_split = None, None, None
         self.mid_level = Level(

@@ -1,0 +1,14 @@
+_target_: diffusion.model.rf.LatentRF2D
+ae:
+  _target_: diffusion.model.modules.ae.AutoencoderKL
+val_shape: [4, 32, 32]
+mapping:
+  _target_: k_diffusion.models.image_transformer_v2.MappingSpec
+  depth: 2
+  width: 256
+  d_ff: ${mul:${.width},3}
+  dropout: 0.0
+time_cond_type: rf_t
+unet:
+  _target_: diffusion.model.transformer.Transformer
+  timestep_width: 256

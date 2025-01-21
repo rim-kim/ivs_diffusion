@@ -13,6 +13,7 @@ if __name__ == '__main__':
     if not torch.cuda.is_available():
         logger.error("CUDA is not available. Exiting.")
         raise RuntimeError("CUDA is not available. Please ensure you have a compatible GPU and drivers installed.")
+    torch.set_float32_matmul_precision("high")
 
     # Iterate over the model configs and hyperparams
     for model_name, model_config in models.items():

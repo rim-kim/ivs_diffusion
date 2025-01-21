@@ -5,6 +5,7 @@ import torch
 from dataset.utils import get_captions
 from diffusion.model.t2i import T2ILatentRF2d
 from diffusion.model.unclip import UnclipLatentRF2d
+from diffusion.model.rf import LatentRF2D
 
 
 def extract_features(
@@ -48,6 +49,8 @@ def extract_features(
             pretrained_model.get_features(imgs, timestep, captions)
         elif isinstance(pretrained_model, UnclipLatentRF2d):
             pretrained_model.get_features(imgs, timestep, clip_embds)
+        elif isinstance(pretrained_model, LatentRF2D):
+            pretrained_model.get_features(imgs,timestep)
         else:
             raise TypeError(f"Unsupported model type: {type(pretrained_model).__name__}")
 
