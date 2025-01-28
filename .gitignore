@@ -178,6 +178,7 @@ data/
 
 # Allow only files starting with 'sample' in the notebooks directory
 notebooks/
+!notebooks/create_plots.ipynb
 !notebooks/sample*
 
 # Exclude (pre-)trained models
@@ -192,3 +193,6 @@ third_party/
 # Logs
 logs/
 slurm_logs/
+
+# Mac files
+.DS_Store
