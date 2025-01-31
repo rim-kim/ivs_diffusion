@@ -8,6 +8,7 @@ import wandb
 from wandb.sdk.wandb_config import Config
 
 from configs.path_configs.path_configs import MODEL_CKPT_PROBING_DIR
+from dataset.utils import get_captions
 from diffusion.model.t2i import T2ILatentRF2d
 from diffusion.model.unclip import UnclipLatentRF2d
 from probing.classifier import extract_features, LinearProbeClassifier
@@ -57,7 +58,10 @@ def train(
     :param device: The device on which computations will be performed (e.g., "cuda").
     """
     model_name, model_config = model_data
-    run_name = f"{model_name}_{model_config['layer_idx']}_{model_config['timestep']}"
+    if model_name == "txt_emb" or model_name == "img_emb":
+        run_name = f"{model_name}"
+    else:
+        run_name = f"{model_name}_{model_config['layer_idx']}_{model_config['timestep']}"
     full_run_name = MODEL_CKPT_PROBING_DIR / run_name
     full_run_name.mkdir(exist_ok=True)
     wandb.init(project=f"linear_probe", name=run_name, config=model_config)
@@ -90,7 +94,12 @@ def train(
                                     leave=False)):
             imgs, targets, clip_embds = imgs.to(config.device), targets.to(config.device), clip_embds.to(config.device)
             # Extract features
-            features = extract_features(pretrained_model, model_name, config.layer_idx, (imgs, targets, clip_embds), config.timestep)
+            if model_name == "txt_emb":
+                features = pretrained_model(get_captions(targets))[:, -1, :].to(config.device)
+            elif model_name == "img_emb":
+                features = clip_embds
+            else:
+                features = extract_features(pretrained_model, model_name, config.layer_idx, (imgs, targets, clip_embds), config.timestep)
             # Make predictions
             output = classifier(features)
             # Compute loss, gradients and update weights
@@ -177,8 +186,13 @@ def test(
                         unit=" Batch",
                         colour="yellow"):
             imgs, targets, clip_embds = imgs.to(config.device), targets.to(config.device), clip_embds.to(config.device)
-             # Extract features
-            features = extract_features(pretrained_model, model_name, config.layer_idx, (imgs, targets, clip_embds), config.timestep)
+            # Extract features
+            if model_name == "txt_emb":
+                features = pretrained_model(get_captions(targets))[:, -1, :].to(config.device)
+            elif model_name == "img_emb":
+                features = clip_embds
+            else:
+                features = extract_features(pretrained_model, model_name, config.layer_idx, (imgs, targets, clip_embds), config.timestep)
             # Make predictions
             output = classifier(features)
             # Compute metrics

@@ -70,13 +70,15 @@ class LinearProbeClassifier(torch.nn.Module):
     """
     def __init__(
         self,
-        layer_idx: int,
+        layer_idx: int = 14,
         feature_dim: int = 1152,
         num_classes: int = 1000,
+        pooling: bool = True,
     ):
         super().__init__()
         self.classifier = torch.nn.Linear(feature_dim, num_classes)
         self.layer_idx = layer_idx
+        self.pooling = pooling
 
     def forward(self, layer_features: Float[torch.Tensor, "b ..."]) -> Float[torch.Tensor, "b ..."]:
         """
@@ -85,5 +87,6 @@ class LinearProbeClassifier(torch.nn.Module):
         :param layer_features: A tensor containing features of specified transformer layer.
         :return: Predicted logits for each class.
         """
-        pooled_features = layer_features.mean(dim=1)
-        return self.classifier(pooled_features)
+        if self.pooling:
+            layer_features = layer_features.mean(dim=1)
+        return self.classifier(layer_features)

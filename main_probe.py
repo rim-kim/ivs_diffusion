@@ -2,6 +2,7 @@ from omegaconf import OmegaConf
 import torch
 
 from dataset.dataset_loaders import LatentDatasetLoader
+from diffusion.model.modules.clip import ClipTextEmbedder, ClipImgEmbedder
 from configs.path_configs.path_configs import MODEL_CKPT_PROBING_DIR
 from configs.hyperparameters.hyperparameters import models, DEVICE
 from probing.classifier import LinearProbeClassifier
@@ -18,19 +19,28 @@ if __name__ == '__main__':
     # Iterate over the model configs and hyperparams
     for model_name, model_config in models.items():
 
-        # Initialize the pre-trained model  
-        cfg = OmegaConf.load(model_config["cfg_path"])
-        pretrained_model = init_model(cfg, model_config["ckpt_path"], DEVICE)
+        # Initialize the pre-trained model and the Linear Clasisfier
+        if model_name == "txt_emb":
+            pretrained_model = ClipTextEmbedder()
+            pretrained_model.eval()
+            classifier = LinearProbeClassifier(feature_dim=768, pooling=False)
+            classifier.to(DEVICE)
+        elif model_name == "img_emb":
+            pretrained_model = ClipImgEmbedder()
+            pretrained_model.eval()
+            classifier = LinearProbeClassifier(feature_dim=1024, pooling=False)
+            classifier.to(DEVICE)
+        else:
+            cfg = OmegaConf.load(model_config["cfg_path"])
+            pretrained_model = init_model(cfg, model_config["ckpt_path"], DEVICE)
+            classifier = LinearProbeClassifier(layer_idx=model_config["layer_idx"])
+            classifier.to(DEVICE)
             
         # Call the DataLoader handler and DataLoaders
         handler = LatentDatasetLoader(batch_size=model_config["batch_size"])
         train_dataloader = handler.get_dataloader(split="train")
         test_dataloader = handler.get_dataloader(split="val")
         val_dataloader = handler.get_dataloader(split="val", is_reduced=True)
-
-        # Instantiate the Linear Classifier
-        classifier = LinearProbeClassifier(layer_idx=model_config["layer_idx"])
-        classifier.to(DEVICE)
 
         # Train the classifier
         try:
