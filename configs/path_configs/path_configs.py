@@ -1,5 +1,5 @@
-from pathlib import Path
 from datetime import datetime
+from pathlib import Path
 from typing import List
 
 # Absolute path to the root dir
@@ -53,6 +53,7 @@ dirs = [
     VAL_LATENT_AND_CLIP_DIR,
 ]
 
+
 def create_dirs(dirs: List[Path]) -> None:
     """
     Creates the specified directories if they do not already exist.
@@ -64,7 +65,8 @@ def create_dirs(dirs: List[Path]) -> None:
     for dir in dirs:
         if isinstance(dir, Path):
             dir.mkdir(parents=True, exist_ok=True)
-        else: 
+        else:
             raise TypeError("Expected a Path instance.")
-        
+
+
 create_dirs(dirs)

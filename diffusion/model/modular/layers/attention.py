@@ -1,21 +1,12 @@
-from diffusion.model.modular.layers.rope import AxialRoPE2D
 import torch
-from torch import nn
 import torch.nn.functional as F
-from diffusion.model.modular.layers import (
-    AdaRMSNorm,
-    FeedForwardBlock,
-    RMSNorm,
-    scale_for_cosine_sim,
-)
-from k_diffusion.models.image_transformer_v2 import (
-    Linear,
-    apply_wd,
-    checkpoint,
-    zero_init,
-)
 from einops import rearrange
 from jaxtyping import Float
+from k_diffusion.models.image_transformer_v2 import Linear, apply_wd, checkpoint, zero_init
+from torch import nn
+
+from diffusion.model.modular.layers import AdaRMSNorm, FeedForwardBlock, RMSNorm, scale_for_cosine_sim
+from diffusion.model.modular.layers.rope import AxialRoPE2D
 
 
 class TransformerLayer(nn.Module):

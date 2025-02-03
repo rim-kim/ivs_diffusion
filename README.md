@@ -75,7 +75,7 @@ poetry run dataset/utils.py --batch_size 64 --samples_per_shard 1000 --dataset b
 ```
 
 ### Step 2: Running the Project
-Extracts frozen features from models listed in `hyperparameters.py` using precomputed latent representations of ImageNet images and their respective conditioning (if applicable). Then, trains a linear classifier on the extracted features.  
+Extracts frozen features from models listed in `hyperparameters.py` using precomputed latent representations of ImageNet images and their respective conditioning (if applicable). Then, trains a linear classifier on the extracted features.
 
 Run the project using:
 ```sh
@@ -88,5 +88,5 @@ poetry run python main_probe.py
 
 ## Acknowledgments
 - We thank **Kolja Bauer (LMU)** for his guidance, valuable feedback, and supervision throughout this project.
-- The initially provided codebase included inference scripts and checkpoints that **belong to CompVis** and are restricted from distribution.  
+- The initially provided codebase included inference scripts and checkpoints that **belong to CompVis** and are restricted from distribution.
 - A lot of model code from the initially provided codebase is adapted from **k-diffusion by Katherine Crowson (MIT)**.

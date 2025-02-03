@@ -1,4 +1,4 @@
-from configs.path_configs.path_configs import MODEL_CONFIGS_DIR, MODEL_CKPT_DIR
+from configs.path_configs.path_configs import MODEL_CKPT_DIR, MODEL_CONFIGS_DIR
 
 EPOCHS, BATCH_SIZE, EVAL_INTERVAL, LR = 1, 64, 1000, 0.001
 TIMESTEP, LAYER_IDX = 0.25, 14
@@ -26,7 +26,7 @@ models = {
         "epochs": EPOCHS,
         "batch_size": BATCH_SIZE,
         "eval_interval": EVAL_INTERVAL,
-        "conditioning": "unconditional"
+        "conditioning": "unconditional",
     },
     "unclip": {
         "cfg_path": f"{MODEL_CONFIGS_DIR}/rf_dit_unclip.yaml",
@@ -41,7 +41,7 @@ models = {
     },
     "t2i": {
         "cfg_path": f"{MODEL_CONFIGS_DIR}/rf_dit_t2i.yaml",
-        "ckpt_path":  f"{MODEL_CKPT_DIR}/t2i.pt",
+        "ckpt_path": f"{MODEL_CKPT_DIR}/t2i.pt",
         "timestep": TIMESTEP,
         "layer_idx": LAYER_IDX,
         "lr": LR,
@@ -60,5 +60,5 @@ models = {
         "batch_size": BATCH_SIZE,
         "eval_interval": EVAL_INTERVAL,
         "conditioning": "unconditional",
-    }
+    },
 }

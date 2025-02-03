@@ -1,6 +1,6 @@
+import diffusers
 import torch
 from torch import nn
-import diffusers
 
 
 class AutoencoderKL(nn.Module):

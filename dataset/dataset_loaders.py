@@ -1,16 +1,22 @@
-from abc import ABC, abstractmethod
+import io
 import os
 import random
+import zlib
+from abc import ABC, abstractmethod
+from pathlib import Path
+from typing import Dict, Literal, Optional, Tuple
+
 import numpy as np
 import torch
 import webdataset as wds
-from pathlib import Path
-from torchvision.transforms import Compose, Resize, ToTensor, Lambda
-import io
-import zlib
-from typing import Optional, Literal, Tuple, Dict
+from torchvision.transforms import Compose, Lambda, Resize, ToTensor
 
-from configs.path_configs.path_configs import IMAGENET_SHARDS_DIR, PREPROCESSED_IMAGENET_DIR, TRAIN_LATENT_AND_CLIP_DIR, VAL_LATENT_AND_CLIP_DIR
+from configs.path_configs.path_configs import (
+    IMAGENET_SHARDS_DIR,
+    PREPROCESSED_IMAGENET_DIR,
+    TRAIN_LATENT_AND_CLIP_DIR,
+    VAL_LATENT_AND_CLIP_DIR,
+)
 
 
 class BaseDatasetLoader(ABC):
@@ -49,7 +55,7 @@ class BaseDatasetLoader(ABC):
     def process_sample(self, sample: Dict) -> Tuple[torch.Tensor, int]:
         """
         Abstract method for creating a data sample from the dataset.
-        
+
         :param sample: A dictionary containing the data sample.
         :return: A tuple containing the transformed sample and label.
         """
@@ -66,10 +72,7 @@ class BaseDatasetLoader(ABC):
         pass
 
     def _construct_dataloader(
-        self, 
-        split: Literal["train", "val"],
-        is_training: bool = True, 
-        is_reduced: bool = False
+        self, split: Literal["train", "val"], is_training: bool = True, is_reduced: bool = False
     ) -> wds.WebLoader:
         """
         Construct a dataloader for the given dataset URL or path.
@@ -105,7 +108,9 @@ class BaseDatasetLoader(ABC):
         if is_training:
             # For training, rebatch after unbatching for more thorough mixing
             dataloader = wds.WebLoader(dataset, batch_size=None, num_workers=4, worker_init_fn=self.worker_init_fn)
-            dataloader = dataloader.unbatched().shuffle(shuffle).batched(self.batch_size).with_epoch(1281167 // self.batch_size)
+            dataloader = (
+                dataloader.unbatched().shuffle(shuffle).batched(self.batch_size).with_epoch(1281167 // self.batch_size)
+            )
         else:
             # For validation, no unbatching/rebatching or extra shuffle
             if is_reduced:
@@ -136,12 +141,7 @@ class DatasetLoader(BaseDatasetLoader):
     """
 
     def __init__(
-        self, 
-        hf_token: str, 
-        batch_size: int, 
-        streaming: bool = False, 
-        seed: int = 42, 
-        verbose: bool = False
+        self, hf_token: str, batch_size: int, streaming: bool = False, seed: int = 42, verbose: bool = False
     ) -> None:
         """
         Initialize the DatasetLoader class.
@@ -174,11 +174,7 @@ class DatasetLoader(BaseDatasetLoader):
         :param sample: A dictionary containing image and label data.
         :return: A tuple containing the processed image tensor and its class label.
         """
-        transform = Compose([
-            Resize((256, 256)),
-            ToTensor(),
-            Lambda(lambda x: x * 2 - 1)
-        ])
+        transform = Compose([Resize((256, 256)), ToTensor(), Lambda(lambda x: x * 2 - 1)])
         return transform(sample["jpg"]), sample["cls"]
 
     def get_dataset_path(self, split: Literal["train", "val"]) -> str:
@@ -200,7 +196,7 @@ class DatasetLoader(BaseDatasetLoader):
                 f"https://huggingface.co/datasets/timm/imagenet-1k-wds/resolve/main/"
                 f"imagenet1k-validation-{{00..{self.val_shards - 1}}}.tar -H 'Authorization:Bearer {self.hf_token}'"
             )
-    
+
     def precompute_and_cache(self, dataloader: wds.WebLoader) -> None:
         """
         Precompute and cache the preprocessed tensors for the dataset.
@@ -245,11 +241,11 @@ class LatentDatasetLoader(BaseDatasetLoader):
         :param sample: A dictionary containing latent vector data and class label.
         :return: A tuple containing the latent tensor and its corresponding class label.
         """
-        decompressed_latent = zlib.decompress(sample['latent.npy.zlib'])
-        decompressed_clip_emb = zlib.decompress(sample['clip_emb.npy.zlib'])
+        decompressed_latent = zlib.decompress(sample["latent.npy.zlib"])
+        decompressed_clip_emb = zlib.decompress(sample["clip_emb.npy.zlib"])
         latent = torch.tensor(np.load(io.BytesIO(decompressed_latent)))
         clip_emb = torch.tensor(np.load(io.BytesIO(decompressed_clip_emb)))
-        label = int(sample['cls.txt'])
+        label = int(sample["cls.txt"])
         return latent, label, clip_emb
 
     def get_dataset_path(self, split: Literal["train", "val"]) -> str:

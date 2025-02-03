@@ -17,7 +17,4 @@ d_img: 1024 # img embedder is ViT-L
 d_t: ${.mapping.width}
 c_dropout: 0.0
 unet:
-  _target_: diffusion.model.transformer.Transformer    
-    
-    
- 
+  _target_: diffusion.model.transformer.Transformer

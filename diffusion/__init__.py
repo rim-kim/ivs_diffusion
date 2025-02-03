@@ -3,7 +3,6 @@ from pydoc import locate
 
 from omegaconf import OmegaConf
 
-
 OmegaConf.register_new_resolver("mul", lambda a, b: a * b)
 OmegaConf.register_new_resolver("div", lambda a, b: a / b)
 OmegaConf.register_new_resolver("add", lambda a, b: a + b)

@@ -1,10 +1,12 @@
-import numpy as np
-from torchvision.utils import make_grid
 import logging
+
+import numpy as np
 from colorlog import ColoredFormatter
+from einops import rearrange
+from torchvision.utils import make_grid
+
 from configs.path_configs.path_configs import LOG_FILE_PATH
 
-from einops import rearrange
 
 # theoretically we do not need this function as wandb.Image directly calls make_grid under the hood, however with normalization!!!
 def image_batch_to_grid_image(images, nrow=None, padding=2):
@@ -62,10 +64,7 @@ def setup_logger():
     # Console handler for user-friendly colored logs
     ch = logging.StreamHandler()
     ch.setLevel(logging.INFO)
-    LOGFORMAT = (
-        "%(asctime)s - %(log_color)s%(levelname)-8s%(reset)s - "
-        "%(log_color)s%(message)s%(reset)s"
-    )
+    LOGFORMAT = "%(asctime)s - %(log_color)s%(levelname)-8s%(reset)s - " "%(log_color)s%(message)s%(reset)s"
     color_formatter = ColoredFormatter(LOGFORMAT)
     ch.setFormatter(color_formatter)
 

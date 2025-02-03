@@ -1,6 +1,6 @@
-import time
 import random
-from typing import Dict, Union, Any, Optional
+import time
+from typing import Any, Dict, Union
 
 import numpy as np
 import torch
@@ -33,10 +33,10 @@ class NullObject:
 
     def __call__(self, *args: Any, **kwds: Any) -> "NullObject":
         return NullObject()
-    
+
     def __enter__(self) -> "NullObject":
         return self
-    
+
     def __exit__(self, exc_type, exc_value, traceback) -> None:
         pass
 
@@ -51,5 +51,3 @@ def set_seed(seed=42, cuda=True):
 
 def dict_to(d: Dict[str, Union[torch.Tensor, Any]], **to_kwargs) -> Dict[str, Union[torch.Tensor, Any]]:
     return {k: (v.to(**to_kwargs) if isinstance(v, torch.Tensor) else v) for k, v in d.items()}
-
-

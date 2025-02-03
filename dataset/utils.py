@@ -1,26 +1,28 @@
 import argparse
 import io
 import math
-from typing import Literal, Tuple, Optional, List
 import zlib
 from pathlib import Path
+from typing import List, Literal, Optional, Tuple
+
 import numpy as np
 import torch
 from torch.utils.data import DataLoader, Subset
 from torchvision import datasets
-from torchvision.transforms import Compose, Resize, ToTensor, Lambda
+from torchvision.transforms import Compose, Lambda, Resize, ToTensor
 from tqdm import tqdm
 from webdataset import TarWriter
 from webdataset.compat import WebLoader
 
-from utils.logging import logger
-from dataset.imagenet_classes import classes
-from dataset.dataset_loaders import DatasetLoader
-from diffusion.model.modules.ae import AutoencoderKL
-from diffusion.model.modules.clip import ClipImgEmbedder
-from configs.tokens.tokens import HF_TOKEN
 from configs.hyperparameters.hyperparameters import DEVICE
 from configs.path_configs.path_configs import TOY_DATA_DIR, TRAIN_LATENT_AND_CLIP_DIR, VAL_LATENT_AND_CLIP_DIR
+from configs.tokens.tokens import HF_TOKEN
+from dataset.dataset_loaders import DatasetLoader
+from dataset.imagenet_classes import classes
+from diffusion.model.modules.ae import AutoencoderKL
+from diffusion.model.modules.clip import ClipImgEmbedder
+from utils.logging import logger
+
 
 def precompute_dataset_len(batch_size: int, split: Literal["train", "val"] = "train") -> int:
     """
@@ -31,8 +33,9 @@ def precompute_dataset_len(batch_size: int, split: Literal["train", "val"] = "tr
     :return: The number of batches.
     """
     total_samples = 1281167 if split == "train" else 50000
-    num_batches =  math.ceil(total_samples / batch_size)
+    num_batches = math.ceil(total_samples / batch_size)
     return num_batches
+
 
 def get_toy_data(batch_size: int, samples: Optional[int] = None) -> Tuple[DataLoader, DataLoader]:
     """
@@ -45,23 +48,16 @@ def get_toy_data(batch_size: int, samples: Optional[int] = None) -> Tuple[DataLo
     if not samples:
         train_samples = batch_size * 4
         val_samples = batch_size * 2
-    transformations = Compose([
-        Resize((256, 256)),
-        ToTensor(),
-        Lambda(lambda x: x * 2 - 1)
-    ])
-    toy_train_data = datasets.CIFAR10(
-        root=TOY_DATA_DIR, train=True, download=True, transform=transformations
-    )
-    toy_val_data = datasets.CIFAR10(
-        root=TOY_DATA_DIR, train=False, download=True, transform=transformations
-    )
+    transformations = Compose([Resize((256, 256)), ToTensor(), Lambda(lambda x: x * 2 - 1)])
+    toy_train_data = datasets.CIFAR10(root=TOY_DATA_DIR, train=True, download=True, transform=transformations)
+    toy_val_data = datasets.CIFAR10(root=TOY_DATA_DIR, train=False, download=True, transform=transformations)
     train_data = Subset(toy_train_data, list(range(train_samples)))
     val_data = Subset(toy_val_data, list(range(val_samples)))
     train_loader = DataLoader(train_data, batch_size=batch_size, shuffle=True)
     val_loader = DataLoader(val_data, batch_size=batch_size, shuffle=False)
 
     return train_loader, val_loader
+
 
 def get_captions(targets: torch.Tensor) -> List[str]:
     """
@@ -71,7 +67,8 @@ def get_captions(targets: torch.Tensor) -> List[str]:
     :return: A list of caption strings corresponding to the target classes.
     """
     class_strings = [preprocess_caption(classes[tgt]) for tgt in targets.tolist()]
-    return class_strings 
+    return class_strings
+
 
 def preprocess_caption(label: str) -> str:
     """
@@ -84,13 +81,14 @@ def preprocess_caption(label: str) -> str:
     caption = f"a photo of a {first_label}"
     return caption
 
+
 def compute_latent_and_clip_representations(
     ae_model: AutoencoderKL,
     clip_model: ClipImgEmbedder,
     dataloader: WebLoader,
     output_path: Path,
     samples_per_shard: int,
-    device: str = DEVICE
+    device: str = DEVICE,
 ) -> None:
     """
     Compute and save latent representations and CLIP embeddings from the models for each image in the dataset.
@@ -102,7 +100,9 @@ def compute_latent_and_clip_representations(
     :param samples_per_shard: The number of samples to store per shard file.
     :param device: The device on which the model and data will be processed (default: "cuda").
     """
-    logger.info(f"Starting computation of latent and CLIP representations. Output path: '{output_path}', Samples per shard: {samples_per_shard}.")
+    logger.info(
+        f"Starting computation of latent and CLIP representations. Output path: '{output_path}', Samples per shard: {samples_per_shard}."
+    )
     sample_id, shard_id = 0, 0
     shard_writer = None
     shard_sample_count = 0
@@ -119,13 +119,15 @@ def compute_latent_and_clip_representations(
                 targets = targets.cpu().numpy()
                 clip_embs = clip_model(imgs).cpu()
 
-            for latent, label, clip_emb in tqdm(iterable=zip(latents, targets, clip_embs), total=len(latents), leave=None):
+            for latent, label, clip_emb in tqdm(
+                iterable=zip(latents, targets, clip_embs), total=len(latents), leave=None
+            ):
                 # Create a new shard after reaching `samples_per_shard` limit
                 if sample_id % samples_per_shard == 0:
                     if shard_writer:
                         shard_writer.close()
                         logger.info(f"Closed shard {shard_id - 1} with {shard_sample_count} samples.")
-                    
+
                     shard_writer = TarWriter(f"{output_path}/latent-{shard_id:04d}.tar")
                     logger.info(f"Started new shard {shard_id}.")
                     shard_id += 1
@@ -148,12 +150,14 @@ def compute_latent_and_clip_representations(
                 compressed_clip_emb = zlib.compress(clip_emb_buffer.read())
 
                 # Write serialized data to the shard
-                shard_writer.write({
-                    '__key__': f"{sample_id:07d}",
-                    'latent.npy.zlib': compressed_latent,
-                    'cls.txt': str(label),
-                    'clip_emb.npy.zlib': compressed_clip_emb,
-                })
+                shard_writer.write(
+                    {
+                        "__key__": f"{sample_id:07d}",
+                        "latent.npy.zlib": compressed_latent,
+                        "cls.txt": str(label),
+                        "clip_emb.npy.zlib": compressed_clip_emb,
+                    }
+                )
                 logger.debug(f"Sample {sample_id} written to shard {shard_id - 1}.")
                 sample_id += 1
                 shard_sample_count += 1
@@ -172,10 +176,15 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--batch_size", type=int, default=64)
     parser.add_argument("--samples_per_shard", type=int, default=1000)
-    parser.add_argument("--dataset", type=str, choices=["train", "val", "both"], default="both",
-                        help="Choose the dataset to process: 'train', 'val', or 'both'.")
+    parser.add_argument(
+        "--dataset",
+        type=str,
+        choices=["train", "val", "both"],
+        default="both",
+        help="Choose the dataset to process: 'train', 'val', or 'both'.",
+    )
     args = parser.parse_args()
-    
+
     handler = DatasetLoader(
         hf_token=HF_TOKEN,
         batch_size=args.batch_size,
@@ -190,9 +199,13 @@ if __name__ == "__main__":
     if args.dataset in ["train", "both"]:
         train_dataloader = handler.get_dataloader(split="train")
         logger.info("Computing latents and CLIP embeddings on training dataset...")
-        compute_latent_and_clip_representations(ae_model, clip_model, train_dataloader, TRAIN_LATENT_AND_CLIP_DIR, args.samples_per_shard)
-    
+        compute_latent_and_clip_representations(
+            ae_model, clip_model, train_dataloader, TRAIN_LATENT_AND_CLIP_DIR, args.samples_per_shard
+        )
+
     if args.dataset in ["val", "both"]:
         test_dataloader = handler.get_dataloader(split="val")
         logger.info("Computing latents and CLIP embeddings on validation dataset...")
-        compute_latent_and_clip_representations(ae_model, clip_model, test_dataloader, VAL_LATENT_AND_CLIP_DIR, args.samples_per_shard)
+        compute_latent_and_clip_representations(
+            ae_model, clip_model, test_dataloader, VAL_LATENT_AND_CLIP_DIR, args.samples_per_shard
+        )

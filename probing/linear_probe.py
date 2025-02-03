@@ -1,21 +1,22 @@
 from typing import Literal, Tuple, Union
-from omegaconf import DictConfig
+
 import hydra
 import torch
+from omegaconf import DictConfig
 from torch.nn.functional import cross_entropy
 from tqdm import tqdm
-import wandb
 from wandb.sdk.wandb_config import Config
 
+import wandb
 from configs.path_configs.path_configs import MODEL_CKPT_PROBING_DIR
 from dataset.utils import get_captions
 from diffusion.model.t2i import T2ILatentRF2d
 from diffusion.model.unclip import UnclipLatentRF2d
-from probing.classifier import extract_features, LinearProbeClassifier
+from probing.classifier import LinearProbeClassifier, extract_features
 from utils.logging import logger
 
-
 wandb.login()
+
 
 def init_model(cfg: DictConfig, ckpt_path: str, device: str) -> torch.nn.Module:
     """
@@ -30,8 +31,8 @@ def init_model(cfg: DictConfig, ckpt_path: str, device: str) -> torch.nn.Module:
     pretrained_model = hydra.utils.instantiate(cfg)
     pretrained_model = pretrained_model.to(device)
     pretrained_model.load_state_dict(
-        {k: v for k, v in torch.load(ckpt_path, map_location=device).items() if not 'ae' in k},
-        strict=False)
+        {k: v for k, v in torch.load(ckpt_path, map_location=device).items() if not "ae" in k}, strict=False
+    )
     pretrained_model.eval()
     logger.info(f"Model {pretrained_model.__class__.__name__} initialized and checkpoint loaded successfully.")
     return pretrained_model
@@ -39,13 +40,13 @@ def init_model(cfg: DictConfig, ckpt_path: str, device: str) -> torch.nn.Module:
 
 def train(
     pretrained_model: Union[T2ILatentRF2d, UnclipLatentRF2d],
-    classifier: LinearProbeClassifier, 
+    classifier: LinearProbeClassifier,
     train_dataloader: torch.utils.data.DataLoader,
     val_dataloader: torch.utils.data.DataLoader,
     test_dataloader: torch.utils.data.DataLoader,
     model_data: Tuple[str, dict],
     device: str,
-    ) -> None:
+) -> None:
     """
     Trains the linear probe classifier using extracted features from the pre-trained model.
 
@@ -72,7 +73,7 @@ def train(
     wandb.define_metric(name="top5_accuracy", step_metric="val2_step")
     wandb.define_metric(name="val_avg_loss", step_metric="val3_step")
     wandb.define_metric(name="epoch", step_metric="epoch_step")
-    wandb.watch(classifier, log='all', log_freq=config.batch_size)
+    wandb.watch(classifier, log="all", log_freq=config.batch_size)
 
     loss_fn = torch.nn.CrossEntropyLoss()
     optimizer = torch.optim.Adam(classifier.classifier.parameters(), lr=config.lr)
@@ -83,15 +84,19 @@ def train(
     best_model_path = full_run_name / f"best_model_{model_name}.pth"
 
     logger.info(f"Starting training for {config.epochs} epochs...")
-    for epoch in range(1, config.epochs+1):
+    for epoch in range(1, config.epochs + 1):
         batch_num = 0
         logger.info(f"Starting epoch {epoch}/{config.epochs}...")
-        for batch_idx, (imgs, targets, clip_embds) in enumerate(tqdm(iterable=train_dataloader,
-                                    total=train_dataloader.nsamples,
-                                    desc="Batches in training",
-                                    unit=" Batch",
-                                    colour="blue",
-                                    leave=False)):
+        for batch_idx, (imgs, targets, clip_embds) in enumerate(
+            tqdm(
+                iterable=train_dataloader,
+                total=train_dataloader.nsamples,
+                desc="Batches in training",
+                unit=" Batch",
+                colour="blue",
+                leave=False,
+            )
+        ):
             imgs, targets, clip_embds = imgs.to(config.device), targets.to(config.device), clip_embds.to(config.device)
             # Extract features
             if model_name == "txt_emb":
@@ -99,7 +104,9 @@ def train(
             elif model_name == "img_emb":
                 features = clip_embds
             else:
-                features = extract_features(pretrained_model, model_name, config.layer_idx, (imgs, targets, clip_embds), config.timestep)
+                features = extract_features(
+                    pretrained_model, model_name, config.layer_idx, (imgs, targets, clip_embds), config.timestep
+                )
             # Make predictions
             output = classifier(features)
             # Compute loss, gradients and update weights
@@ -109,18 +116,20 @@ def train(
             optimizer.step()
 
             # Log batch metrics to wandb
-            wandb.log({
-                "train_step": batch_idx,
-                "train_batch_loss": loss.item(),
-            })
-            wandb.log({
-                "epoch_step": batch_idx,
-                "epoch": epoch})
+            wandb.log(
+                {
+                    "train_step": batch_idx,
+                    "train_batch_loss": loss.item(),
+                }
+            )
+            wandb.log({"epoch_step": batch_idx, "epoch": epoch})
 
             # Evaluate model at specified batch interval
             if (batch_idx + 1) % config.eval_interval == 0:
                 logger.info(f"Evaluating model at batch number {batch_idx + 1}...")
-                top1_accuracy, top5_accuracy, _ = test(pretrained_model, classifier, val_dataloader, config, batch_idx, model_name, "val")
+                top1_accuracy, top5_accuracy, _ = test(
+                    pretrained_model, classifier, val_dataloader, config, batch_idx, model_name, "val"
+                )
 
                 # Save if best performing model until now
                 weighted_accuracy = (top1_accuracy * 0.7) + (top5_accuracy * 0.3)
@@ -134,7 +143,9 @@ def train(
                         "best_weighted_accuracy": best_weighted_accuracy,
                     }
                     torch.save(save_dict, best_model_path)
-                    logger.info(f"New best model saved at {best_model_path} with weighted accuracy {best_weighted_accuracy:.4f} at epoch {epoch} and batch idx {batch_idx+1}.")
+                    logger.info(
+                        f"New best model saved at {best_model_path} with weighted accuracy {best_weighted_accuracy:.4f} at epoch {epoch} and batch idx {batch_idx+1}."
+                    )
 
             batch_num += 1
         logger.info(f"Epoch {epoch} completed with {batch_num} batches.")
@@ -143,23 +154,22 @@ def train(
 
     # Log final full validation
     logger.info("Starting full validation...")
-    top1_accuracy, top5_accuracy, avg_loss = test(pretrained_model, classifier, test_dataloader, config, -1, model_name, "test")
-    wandb.log({
-        "full_top1_accuracy": top1_accuracy,
-        "full_top5_accuracy": top5_accuracy,
-        "full_avg_loss": avg_loss
-    })
+    top1_accuracy, top5_accuracy, avg_loss = test(
+        pretrained_model, classifier, test_dataloader, config, -1, model_name, "test"
+    )
+    wandb.log({"full_top1_accuracy": top1_accuracy, "full_top5_accuracy": top5_accuracy, "full_avg_loss": avg_loss})
     wandb.finish()
+
 
 def test(
     pretrained_model: Union[T2ILatentRF2d, UnclipLatentRF2d],
-    classifier: LinearProbeClassifier, 
-    dataloader: torch.utils.data.DataLoader, 
-    config: Config, 
+    classifier: LinearProbeClassifier,
+    dataloader: torch.utils.data.DataLoader,
+    config: Config,
     batch_idx: int,
     model_name: str,
-    split: Literal["val", "test"] = "test"
-    ) -> Tuple[float, float]:
+    split: Literal["val", "test"] = "test",
+) -> Tuple[float, float]:
     """
     Evaluates the classifier on the specified dataset split.
 
@@ -180,11 +190,9 @@ def test(
     total = 0
 
     with torch.no_grad():
-        for (imgs, targets, clip_embds) in tqdm(iterable=dataloader,
-                        total=dataloader.nsamples,
-                        desc="Batches in validation", 
-                        unit=" Batch",
-                        colour="yellow"):
+        for imgs, targets, clip_embds in tqdm(
+            iterable=dataloader, total=dataloader.nsamples, desc="Batches in validation", unit=" Batch", colour="yellow"
+        ):
             imgs, targets, clip_embds = imgs.to(config.device), targets.to(config.device), clip_embds.to(config.device)
             # Extract features
             if model_name == "txt_emb":
@@ -192,7 +200,9 @@ def test(
             elif model_name == "img_emb":
                 features = clip_embds
             else:
-                features = extract_features(pretrained_model, model_name, config.layer_idx, (imgs, targets, clip_embds), config.timestep)
+                features = extract_features(
+                    pretrained_model, model_name, config.layer_idx, (imgs, targets, clip_embds), config.timestep
+                )
             # Make predictions
             output = classifier(features)
             # Compute metrics
@@ -211,19 +221,25 @@ def test(
         avg_loss = total_loss / total
 
         if split == "val":
-            wandb.log({
-                "val1_step": (batch_idx + 1) // config.eval_interval,
-                "top1_accuracy": top1_accuracy,
-            })
-            wandb.log({
-                "val2_step": (batch_idx + 1) // config.eval_interval,
-                "top5_accuracy": top5_accuracy,
-            })
-            wandb.log({
-                "val3_step": (batch_idx + 1) // config.eval_interval,
-                "avg_loss": avg_loss,
-            })
+            wandb.log(
+                {
+                    "val1_step": (batch_idx + 1) // config.eval_interval,
+                    "top1_accuracy": top1_accuracy,
+                }
+            )
+            wandb.log(
+                {
+                    "val2_step": (batch_idx + 1) // config.eval_interval,
+                    "top5_accuracy": top5_accuracy,
+                }
+            )
+            wandb.log(
+                {
+                    "val3_step": (batch_idx + 1) // config.eval_interval,
+                    "avg_loss": avg_loss,
+                }
+            )
 
-        logger.info(f'{split}: top1 accuracy {top1_accuracy:.4f} and top5 accuracy {top5_accuracy:.4f}')
-        logger.info(f'{split}: average loss {avg_loss:.4f}')
+        logger.info(f"{split}: top1 accuracy {top1_accuracy:.4f} and top5 accuracy {top5_accuracy:.4f}")
+        logger.info(f"{split}: average loss {avg_loss:.4f}")
         return top1_accuracy, top5_accuracy, avg_loss

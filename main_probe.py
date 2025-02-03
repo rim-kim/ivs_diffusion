@@ -1,16 +1,15 @@
-from omegaconf import OmegaConf
 import torch
+from omegaconf import OmegaConf
 
-from dataset.dataset_loaders import LatentDatasetLoader
-from diffusion.model.modules.clip import ClipTextEmbedder, ClipImgEmbedder
+from configs.hyperparameters.hyperparameters import DEVICE, models
 from configs.path_configs.path_configs import MODEL_CKPT_PROBING_DIR
-from configs.hyperparameters.hyperparameters import models, DEVICE
+from dataset.dataset_loaders import LatentDatasetLoader
+from diffusion.model.modules.clip import ClipImgEmbedder, ClipTextEmbedder
 from probing.classifier import LinearProbeClassifier
 from probing.linear_probe import init_model, train
 from utils.logging import logger
 
-
-if __name__ == '__main__':
+if __name__ == "__main__":
     if not torch.cuda.is_available():
         logger.error("CUDA is not available. Exiting.")
         raise RuntimeError("CUDA is not available. Please ensure you have a compatible GPU and drivers installed.")
@@ -35,7 +34,7 @@ if __name__ == '__main__':
             pretrained_model = init_model(cfg, model_config["ckpt_path"], DEVICE)
             classifier = LinearProbeClassifier(layer_idx=model_config["layer_idx"])
             classifier.to(DEVICE)
-            
+
         # Call the DataLoader handler and DataLoaders
         handler = LatentDatasetLoader(batch_size=model_config["batch_size"])
         train_dataloader = handler.get_dataloader(split="train")
@@ -44,7 +43,15 @@ if __name__ == '__main__':
 
         # Train the classifier
         try:
-            train(pretrained_model, classifier, train_dataloader, val_dataloader, test_dataloader, (model_name, model_config), DEVICE)
+            train(
+                pretrained_model,
+                classifier,
+                train_dataloader,
+                val_dataloader,
+                test_dataloader,
+                (model_name, model_config),
+                DEVICE,
+            )
         except Exception as e:
             logger.exception(f"An error occurred during training: {e}.")
             save_file = MODEL_CKPT_PROBING_DIR / f"interrupted_{model_name}.pth"

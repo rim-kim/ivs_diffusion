@@ -1,13 +1,14 @@
-from typing import Union, List, Optional
+from typing import List, Optional, Union
 
-import torch
-from torch import nn
-from jaxtyping import Float
 import einops
 import numpy as np
-from diffusion.model.rf import LatentRF2D
+import torch
+from jaxtyping import Float
 from k_diffusion.models.image_transformer_v2 import Linear
+from torch import nn
 from tqdm.auto import tqdm
+
+from diffusion.model.rf import LatentRF2D
 
 
 class UnclipLatentRF2d(LatentRF2D):
@@ -41,7 +42,6 @@ class UnclipLatentRF2d(LatentRF2D):
 
         return {"cond_norm": cond_time}
 
-
     def get_unconditional_conditioning(self, t: Float[torch.Tensor, "b"], **kwargs) -> dict[str, torch.Tensor]:
         if self.time_cond_type == "sigma":
             c_noise = torch.log(t) / 4
@@ -57,7 +57,7 @@ class UnclipLatentRF2d(LatentRF2D):
 
     def forward(self, x: Float[torch.Tensor, "b ..."], **data_kwargs) -> Float[torch.Tensor, "b"]:
         return super().forward(x=x, c_img=x, **data_kwargs)
-    
+
     def get_features(self, x: Float[torch.Tensor, "b ..."], t: int, clip_embds: Float[torch.Tensor, "b ..."]):
         return super().get_features(x, c_img=x, t=t, clip_embds=clip_embds)
 

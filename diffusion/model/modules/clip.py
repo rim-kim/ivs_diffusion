@@ -1,14 +1,11 @@
+import os
+
 import torch
-from torch import nn
-from transformers import CLIPVisionModel, CLIPVisionModelWithProjection
-from torchvision.transforms.functional import normalize
 from jaxtyping import Float
-import torch
 from torch import nn
 from torch.nn.functional import avg_pool2d, interpolate
-from torchvision.transforms.functional import center_crop
-from transformers import AutoTokenizer, CLIPTextModel
-import os
+from torchvision.transforms.functional import center_crop, normalize
+from transformers import AutoTokenizer, CLIPTextModel, CLIPVisionModel, CLIPVisionModelWithProjection
 
 
 class ClipTextEmbedder(nn.Module):
@@ -35,7 +32,9 @@ class ClipTextEmbedder(nn.Module):
     @torch.no_grad()
     def forward(self, prompts: list[str]) -> torch.Tensor:
 
-        tokens = self.tokenizer(prompts, padding="max_length", truncation=True, max_length=self.max_length, return_tensors="pt")
+        tokens = self.tokenizer(
+            prompts, padding="max_length", truncation=True, max_length=self.max_length, return_tensors="pt"
+        )
         for k, v in tokens.items():
             if isinstance(v, torch.Tensor):
                 tokens[k] = v.to(device=self.model.device)

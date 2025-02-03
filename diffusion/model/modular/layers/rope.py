@@ -1,9 +1,10 @@
-import torch
-from torch import nn
 import math
+from abc import ABC, abstractmethod
+
+import torch
 from k_diffusion.models.axial_rope import bounding_box, centers, make_grid
 from k_diffusion.models.image_transformer_v2 import apply_rotary_emb, apply_rotary_emb_
-from abc import ABC, abstractmethod
+from torch import nn
 
 
 class AbstractPosEnc(nn.Module, ABC):

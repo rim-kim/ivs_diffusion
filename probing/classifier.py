@@ -1,17 +1,18 @@
 from typing import Tuple, Union
-from jaxtyping import Float, Int
+
 import torch
+from jaxtyping import Float, Int
 
 from dataset.utils import get_captions
+from diffusion.model.rf import LatentRF2D
 from diffusion.model.t2i import T2ILatentRF2d
 from diffusion.model.unclip import UnclipLatentRF2d
-from diffusion.model.rf import LatentRF2D
 
 
 def extract_features(
     pretrained_model: torch.nn.Module,
     model_name: str,
-    layer_idx : int,
+    layer_idx: int,
     data: Tuple[Float[torch.Tensor, "b ..."], Int[torch.Tensor, "b"], Float[torch.Tensor, "b ..."]],
     timestep: Union[float, int],
 ) -> Float[torch.Tensor, "b ..."]:
@@ -29,7 +30,7 @@ def extract_features(
         raise ValueError(f"The layer index must be an integer in the range 14 to 27 (inclusive), not {layer_idx}.")
     imgs, targets, clip_embds = data
     features = []
-    
+
     # Hook function storing the layer features
     def hook(module, input, output):
         features.append(output)
@@ -50,7 +51,7 @@ def extract_features(
         elif isinstance(pretrained_model, UnclipLatentRF2d):
             pretrained_model.get_features(imgs, timestep, clip_embds)
         elif isinstance(pretrained_model, LatentRF2D):
-            pretrained_model.get_features(imgs,timestep)
+            pretrained_model.get_features(imgs, timestep)
         else:
             raise TypeError(f"Unsupported model type: {type(pretrained_model).__name__}")
 
@@ -68,6 +69,7 @@ class LinearProbeClassifier(torch.nn.Module):
     :param feature_dim: The dimensionality of the input features. Defaults to 1152.
     :param num_classes: The number of output classes for classification. Defaults to 1000.
     """
+
     def __init__(
         self,
         layer_idx: int = 14,

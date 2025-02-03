@@ -1,16 +1,16 @@
-from typing import Union, List, Literal, Optional
-
-import torch
-from torch import nn
-from jaxtyping import Float
-from tqdm.auto import trange
-import einops
-import numpy as np  
-
-from k_diffusion.models.image_transformer_v2 import MappingNetwork, tag_module, Linear, layers
 from abc import ABC, abstractmethod
+from typing import List, Literal, Optional, Union
+
+import einops
+import numpy as np
+import torch
+from jaxtyping import Float
+from k_diffusion.models.image_transformer_v2 import Linear, MappingNetwork, layers, tag_module
+from torch import nn
+from tqdm.auto import trange
 
 from diffusion.model.modular.layers.rope import make_axial_pos_2d
+
 
 class RF(nn.Module, ABC):
     def __init__(
@@ -50,8 +50,8 @@ class RF(nn.Module, ABC):
         cond_time = self.mapping(time_emb)
 
         return {"cond_norm": cond_time}
-    
-    # Used for the unconditional branch of CFG. If you want custom behaviour, 
+
+    # Used for the unconditional branch of CFG. If you want custom behaviour,
     # e.g. because you have multiple conditionings, overwrite this in your subclass
     def get_unconditional_conditioning(self, t: Float[torch.Tensor, "b"], **kwargs) -> dict[str, torch.Tensor]:
         # By default, the unconditional path for CFG will only use time conditioning
@@ -89,7 +89,7 @@ class RF(nn.Module, ABC):
 
         vtheta = self.unet(zt, pos=pos, **cond_dict)
         return ((z1 - x - vtheta) ** 2).mean(dim=list(range(1, len(x.shape))))
-    
+
     def get_features(self, x: Float[torch.Tensor, "b ..."], t: Union[float, int], **data_kwargs) -> None:
         if t is None:
             raise ValueError(f"No timestep value is provided.")
@@ -129,21 +129,20 @@ class RF(nn.Module, ABC):
 
             cond_dict = self.get_conditioning(t, **data_kwargs)
             vc_cond = self.unet(z, pos=pos, **cond_dict)
-            
+
             if self.cfg_scale > 1.0:
                 uncond_dict = self.get_unconditional_conditioning(t, **data_kwargs)
                 vc_uncond = self.unet(z, pos=pos, **uncond_dict)
                 z = z - dt * (vc_uncond + self.cfg_scale * (vc_cond - vc_uncond))
             else:
                 z = z - dt * vc_cond
-            
+
             if return_list:
                 images.append(z)
         if return_list:
             return images
         else:
             return z
-
 
 
 class LatentRF2D(RF):
@@ -160,8 +159,8 @@ class LatentRF2D(RF):
     def forward(self, x: Float[torch.Tensor, "b ..."], **data_kwargs) -> Float[torch.Tensor, "b"]:
         latent = self.ae.encode(x)
         return super().forward(latent, **data_kwargs)
-    
-    def get_features(self, x: Float[torch.Tensor, "b ..."], t: Union[float, int],  **data_kwargs) -> None:
+
+    def get_features(self, x: Float[torch.Tensor, "b ..."], t: Union[float, int], **data_kwargs) -> None:
         return super().get_features(x=x, t=t, **data_kwargs)
 
     def get_pos(self, x: Float[torch.Tensor, "B C *DIM"]) -> Float[torch.Tensor, "B *DIM c"]:

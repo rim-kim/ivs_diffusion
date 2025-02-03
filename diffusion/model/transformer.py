@@ -1,10 +1,10 @@
-from pydoc import locate
+import torch
+from einops import rearrange
+from jaxtyping import Float
+from torch import nn
+
 from diffusion.model.modular.layers import TokenMerge2D, TokenSplitLast2D
 from diffusion.model.modular.layers.attention import CrossTransformerLayer, TransformerLayer
-from torch import nn
-import torch
-from jaxtyping import Float
-from einops import rearrange
 
 
 class Level(nn.ModuleList):
@@ -37,9 +37,7 @@ class Transformer(nn.Module):
             patch_size=(2, 2),
         )
 
-    def forward(
-        self, x: Float[torch.Tensor, "B C *DIMS"], pos: Float[torch.Tensor, "B cn *DIM"], cond_norm
-    ):
+    def forward(self, x: Float[torch.Tensor, "B C *DIMS"], pos: Float[torch.Tensor, "B cn *DIM"], cond_norm):
 
         x = rearrange(x, "b c ... -> b ... c")
         pos = rearrange(pos, "b cn ... -> b ... cn")
@@ -60,6 +58,7 @@ class Transformer(nn.Module):
 
         return x
 
+
 class CATransformer(nn.Module):
     def __init__(self):
         super().__init__()
@@ -76,7 +75,10 @@ class CATransformer(nn.Module):
 
         self.mid_level, self.mid_merge, self.mid_split = None, None, None
         self.mid_level = Level(
-            [CrossTransformerLayer(transformer_width, ca_width, timestep_width, d_heads) for _ in range(transformer_depth)]
+            [
+                CrossTransformerLayer(transformer_width, ca_width, timestep_width, d_heads)
+                for _ in range(transformer_depth)
+            ]
         )
         self.mid_merge = TokenMerge2D(in_features=in_channels, out_features=transformer_width, patch_size=(2, 2))
         self.mid_split = TokenSplitLast2D(
@@ -85,9 +87,7 @@ class CATransformer(nn.Module):
             patch_size=(2, 2),
         )
 
-    def forward(
-        self, x: Float[torch.Tensor, "B C *DIMS"], pos: Float[torch.Tensor, "B cn *DIM"], x_cross, cond_norm
-    ):
+    def forward(self, x: Float[torch.Tensor, "B C *DIMS"], pos: Float[torch.Tensor, "B cn *DIM"], x_cross, cond_norm):
 
         x = rearrange(x, "b c ... -> b ... c")
         pos = rearrange(pos, "b cn ... -> b ... cn")

@@ -1,10 +1,11 @@
+from functools import reduce
+from typing import Literal
+
+import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from k_diffusion.models.image_transformer_v2 import Linear, apply_wd, zero_init, tag_module, LinearGEGLU
-import torch
 from einops import rearrange
-from typing import Literal
-from functools import reduce
+from k_diffusion.models.image_transformer_v2 import Linear, apply_wd, tag_module, zero_init
 
 
 def rms_norm(x, scale, eps):
