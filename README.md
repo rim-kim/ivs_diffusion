@@ -57,7 +57,23 @@ Once inside the Conda environment, install the project dependencies using:
 poetry install
 ```
 
-### Step 6: Verify Installation
+### Step 6: Set Up Hugging Face Token
+To access the **ImageNet dataset** from Hugging Face, you need to provide your **Hugging Face access token**.
+
+ - Create `data/tokens/tokens.py` and add:
+     ```python
+     HF_TOKEN = "your_huggingface_token_here"
+     ```
+  - This file is already included in `.gitignore`, so your token will not be accidentally pushed to GitHub.
+
+
+### Step 7: Enable Pre-commit Hooks
+To activate the pre-commit hooks, run:
+```sh
+poetry run pre-commit install
+```
+
+### Step 8: Verify Installation
 After installation, check that everything is set up correctly by running:
 ```sh
 poetry run python -c "import torch; print(torch.__version__)"
