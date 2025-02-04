@@ -88,7 +88,7 @@ The computed representations are stored in compressed `.tar` shards.
 
 Run the pre-computation using:
 ```sh
-python dataset/utils.py --batch_size 64 --samples_per_shard 1000 --dataset both
+python -m dataset.utils --batch_size 64 --samples_per_shard 1000 --dataset both
 ```
 
 ### Step 2: Running the Project
@@ -96,7 +96,7 @@ Extracts frozen features from models listed in `hyperparameters.py` using precom
 
 Run the project using:
 ```sh
-python main_probe.py --models all --timestep 0.25 --layer_idx 16
+python -m main_probe --models all --timestep 0.25 --layer_idx 16
 ```
 
 ## Authors
