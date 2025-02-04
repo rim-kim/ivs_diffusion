@@ -60,7 +60,7 @@ poetry install
 ### Step 6: Set Up Hugging Face Token
 To access the **ImageNet dataset** from Hugging Face, you need to provide your **Hugging Face access token**.
 
- - Create `data/tokens/tokens.py` and add:
+ - Create `configs/tokens/tokens.py` and add:
      ```python
      HF_TOKEN = "your_huggingface_token_here"
      ```
