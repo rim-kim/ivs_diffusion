@@ -2,12 +2,14 @@ import torch
 from omegaconf import OmegaConf
 
 from configs.hyperparameters.hyperparameters import DEVICE, models
-from configs.path_configs.path_configs import MODEL_CKPT_PROBING_DIR
+from configs.warnings.suppress_warnings import suppress_warnings
 from dataset.dataset_loaders import LatentDatasetLoader
 from diffusion.model.modules.clip import ClipImgEmbedder, ClipTextEmbedder
 from probing.classifier import LinearProbeClassifier
 from probing.linear_probe import init_model, train
 from utils.logging import logger
+
+suppress_warnings()
 
 if __name__ == "__main__":
     if not torch.cuda.is_available():
@@ -53,7 +55,4 @@ if __name__ == "__main__":
                 DEVICE,
             )
         except Exception as e:
-            logger.exception(f"An error occurred during training: {e}.")
-            save_file = MODEL_CKPT_PROBING_DIR / f"interrupted_{model_name}.pth"
-            torch.save(classifier.classifier.state_dict(), save_file)
-            logger.info(f"Checkpoint saved at {save_file} due to training interruption.")
+            logger.exception(f"An error occurred during training: {e}. Skipping model {model_name}...")

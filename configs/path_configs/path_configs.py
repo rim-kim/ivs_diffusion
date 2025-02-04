@@ -22,9 +22,6 @@ IMAGENET_LATENT_AND_CLIP_DIR = DATA_DIR / "imagenet_latent_and_clip"
 TOY_DATA_DIR = DATA_DIR / "toy_data"
 PREPROCESSED_IMAGENET_DIR = DATA_DIR / "preprocessed_data"
 
-# Second-level dirs (model_checkpoints)
-MODEL_CKPT_PROBING_DIR = MODEL_CKPT_DIR / "probing"
-
 # Second-level dirs (logs)
 LOG_DIR_PATH = LOGS_DIR / datetime.now().strftime("%y%m%d-%H%M%S")
 
@@ -47,7 +44,6 @@ dirs = [
     IMAGENET_LATENT_AND_CLIP_DIR,
     TOY_DATA_DIR,
     PREPROCESSED_IMAGENET_DIR,
-    MODEL_CKPT_PROBING_DIR,
     LOG_DIR_PATH,
     TRAIN_LATENT_AND_CLIP_DIR,
     VAL_LATENT_AND_CLIP_DIR,
