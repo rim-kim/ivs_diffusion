@@ -4,6 +4,7 @@ version = "0.1.0"
 description = "The project explores diffusion transformer models using linear probing to analyze their internal representations. It compares different conditioning mechanisms (image-conditioned, text-conditioned and unconditional)- to determine their impact on learned representations. The project aims to identify which model layers contain the most semantic information and whether conditioning enhances or obscures generalizable knowledge."
 authors = ["Ioannis Partalas <partalas.ioan@gmail.com>", "Jeongrim Kim <rim.kim92@gmail.com>"]
 readme = "README.md"
+package-mode = false
 
 [tool.poetry.dependencies]
 k-diffusion = {git = "https://github.com/crowsonkb/k-diffusion.git", rev = "21d12c91ad4550e8fcf3308ff9fe7116b3f19a08"}
@@ -176,9 +177,6 @@ pyarrow = "^19.0.0"
 [tool.poetry.group.dev.dependencies]
 pre-commit = "^4.1.0"
 
-[tool.poetry.scripts]
-precompute = "dataset.utils:main"
-main = "main_probe:main"
 
 [build-system]
 requires = ["poetry-core"]
