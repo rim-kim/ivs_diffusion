@@ -172,7 +172,15 @@ def compute_latent_and_clip_representations(
             logger.info(f"Closed final shard {shard_id - 1} with {shard_sample_count} samples.")
 
 
-if __name__ == "__main__":
+def main():
+    """
+    Project entry point for pre-computing latents and CLIP embeddings.
+
+    Parses command-line arguments, initializes models, loads datasets,
+    and processes the selected dataset split ('train', 'val', or 'both').
+
+    Latents and CLIP embeddings are computed and stored in the specified directories.
+    """
     parser = argparse.ArgumentParser()
     parser.add_argument("--batch_size", type=int, default=64)
     parser.add_argument("--samples_per_shard", type=int, default=1000)
@@ -209,3 +217,7 @@ if __name__ == "__main__":
         compute_latent_and_clip_representations(
             ae_model, clip_model, test_dataloader, VAL_LATENT_AND_CLIP_DIR, args.samples_per_shard
         )
+
+
+if __name__ == "__main__":
+    main()

@@ -54,7 +54,7 @@ def init_training_setup(classifier: LinearProbeClassifier, model_name: str, mode
         else f"{model_name}_{model_config['layer_idx']}_{model_config['timestep']}"
     )
 
-    wandb.init(project="trial_linear_probe", name=run_name, config=model_config)
+    wandb.init(project="linear_probe", name=run_name, config=model_config)
     wandb.config["device"] = device
     wandb.define_metric(name="train_batch_loss", step_metric="train_step")
     wandb.define_metric(name="top1_accuracy", step_metric="val1_step")

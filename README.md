@@ -87,7 +87,7 @@ The computed representations are stored in compressed `.tar` shards.
 
 Run the pre-computation using:
 ```sh
-poetry run dataset/utils.py --batch_size 64 --samples_per_shard 1000 --dataset both
+poetry run precompute --batch_size 64 --samples_per_shard 1000 --dataset both
 ```
 
 ### Step 2: Running the Project
@@ -95,7 +95,7 @@ Extracts frozen features from models listed in `hyperparameters.py` using precom
 
 Run the project using:
 ```sh
-poetry run python main_probe.py
+poetry run main --models all --timestep 0.25 --layer_idx 16
 ```
 
 ## Authors

@@ -54,7 +54,15 @@ def define_models(args: Namespace) -> Dict[str, Dict[str, Any]]:
     return models
 
 
-if __name__ == "__main__":
+def main() -> None:
+    """
+    Project entry point. Ensures CUDA availability, initializes models, loads data, and trains classifiers.
+
+    Loads user-selected models, configures the appropriate pre-trained model and classifier,
+    retrieves datasets, and starts training. Logs errors if training fails.
+
+    :raises RuntimeError: If CUDA is unavailable.
+    """
     if not torch.cuda.is_available():
         logger.error("CUDA is not available. Exiting.")
         raise RuntimeError("CUDA is not available. Please ensure you have a compatible GPU and drivers installed.")
@@ -100,3 +108,7 @@ if __name__ == "__main__":
             )
         except Exception as e:
             logger.exception(f"An error occurred during training: {e}. Skipping model {model_name}...")
+
+
+if __name__ == "__main__":
+    main()
