@@ -1,10 +1,10 @@
 from configs.path_configs.path_configs import MODEL_CKPT_DIR, MODEL_CONFIGS_DIR
 
 EPOCHS, BATCH_SIZE, EVAL_INTERVAL, LR = 1, 64, 1000, 0.001
-TIMESTEP, LAYER_IDX = 0.25, 14
+TIMESTEP, LAYER_IDX = None, None  # User-defined in main_probe.py
 DEVICE = "cuda"
 
-models = {
+default_models = {
     "txt_emb": {
         "lr": LR,
         "epochs": EPOCHS,
